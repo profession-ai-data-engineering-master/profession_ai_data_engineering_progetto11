@@ -1,0 +1,19 @@
+# Typst build output
+build/
+*.pdf
+
+# Python / Environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.venv
+.env
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/*
+!.vscode/tasks.json
+
+# OS specific
+.DS_Store
+Thumbs.db
