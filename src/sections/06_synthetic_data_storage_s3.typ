@@ -29,13 +29,78 @@ Ho escluso qualsiasi permesso di scrittura o accesso a percorsi non necessari. H
 
 Ho configurato il ruolo SnowflakeS3AccessRole per l'assunzione controllata da parte di Snowflake e ho verificato che l'accesso avvenga tramite credenziali temporanee. Questo evita l'uso di chiavi statiche e riduce il rischio di esposizione delle credenziali. La scelta supporta compliance e auditabilita' perche' l'accesso e' tracciato e limitato nel tempo.
 
+Sul lato Snowflake ho creato una STORAGE INTEGRATION dedicata (con `STORAGE_PROVIDER = S3` e `STORAGE_AWS_ROLE_ARN` puntato a SnowflakeS3AccessRole). Ho recuperato i valori `STORAGE_AWS_IAM_USER_ARN` e `STORAGE_AWS_EXTERNAL_ID` con `DESC INTEGRATION` e li ho usati nella trust policy del ruolo IAM. Ho quindi creato lo STAGE esterno con `URL = 's3://healthdata-synthetic/dev/'` e `STORAGE_INTEGRATION = <nome_integrazione>`, e ho validato l'accesso con un `LIST @stage`.
+
 == Configurazione della trust relationship
 
-Ho aperto il ruolo SnowflakeS3AccessRole e sono entrato nella sezione Trust relationships. Ho impostato la relazione di trust per consentire a Snowflake di assumere il ruolo, con accesso basato su credenziali temporanee. Ho verificato che non fossero presenti utenti o servizi non autorizzati e ho motivato questa scelta per eliminare la condivisione di chiavi statiche e migliorare la sicurezza dell'accesso.
+Ho aperto il ruolo SnowflakeS3AccessRole e sono entrato nella sezione Trust relationships. Ho impostato la relazione di trust per consentire a Snowflake di assumere il ruolo, usando come principal AWS il valore fornito da Snowflake (`STORAGE_AWS_IAM_USER_ARN`) e vincolando l'assunzione con `ExternalId` (`STORAGE_AWS_EXTERNAL_ID`). Ho verificato che non fossero presenti utenti o servizi non autorizzati e ho motivato questa scelta per eliminare la condivisione di chiavi statiche e migliorare la sicurezza dell'accesso.
+
+Esempio di trust policy applicata al ruolo:
+
+```json
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Effect": "Allow",
+			"Principal": {
+				"AWS": "<STORAGE_AWS_IAM_USER_ARN>"
+			},
+			"Action": "sts:AssumeRole",
+			"Condition": {
+				"StringEquals": {
+					"sts:ExternalId": "<STORAGE_AWS_EXTERNAL_ID>"
+				}
+			}
+		}
+	]
+}
+```
 
 == Restrizione dell'accesso tramite bucket policy
 
 Ho aperto il bucket S3, sono entrato in Permissions e quindi in Bucket policy. Ho inserito una policy che consente l'accesso solo al ruolo SnowflakeS3AccessRole e che nega qualsiasi altro accesso non autorizzato. Ho salvato la policy e ho ricontrollato che il bucket risultasse non pubblico con Block all public access attivo.
+
+Esempio di bucket policy in sola lettura con path limitati:
+
+```json
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "AllowSnowflakeList",
+			"Effect": "Allow",
+			"Principal": {
+				"AWS": "arn:aws:iam::ACCOUNT_ID:role/SnowflakeS3AccessRole"
+			},
+			"Action": "s3:ListBucket",
+			"Resource": "arn:aws:s3:::healthdata-synthetic",
+			"Condition": {
+				"StringLike": {
+					"s3:prefix": [
+						"dev/ehr/*",
+						"dev/erp/*",
+						"dev/iot/*"
+					]
+				}
+			}
+		},
+		{
+			"Sid": "AllowSnowflakeRead",
+			"Effect": "Allow",
+			"Principal": {
+				"AWS": "arn:aws:iam::ACCOUNT_ID:role/SnowflakeS3AccessRole"
+			},
+			"Action": "s3:GetObject",
+			"Resource": [
+				"arn:aws:s3:::healthdata-synthetic/dev/ehr/*",
+				"arn:aws:s3:::healthdata-synthetic/dev/erp/*",
+				"arn:aws:s3:::healthdata-synthetic/dev/iot/*"
+			]
+		}
+	]
+}
+```
 
 == Upload dei dati tramite AWS Management Console
 
