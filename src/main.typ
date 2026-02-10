@@ -38,3 +38,10 @@
 
 // Sezioni
 #include "sections/01_contesto_e_obiettivo.typ"
+#include "sections/02_piano_azione.typ"
+#include "sections/03_dati_sintetici.typ"
+#include "sections/04_analisi_requisiti.typ"
+#include "sections/05_architettura_snowflake.typ"
+#include "sections/06_modello_dati.typ"
+#include "sections/07_sicurezza_conformita.typ"
+#include "sections/08_conclusioni.typ"
