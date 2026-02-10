@@ -11,7 +11,7 @@ Questa scelta mi ha permesso di disporre di una base dati verosimile e struttura
 Per produrre il dataset, ho utilizzato un progetto esterno denominato "healthdata-synthetic-generator", basato sulla libreria Python *SDV (Synthetic Data Vault)*. SDV è uno strumento avanzato che consente di modellare dataset multi-tabella, apprendendo le distribuzioni statistiche e le relazioni dai dati originali (o da schemi definiti) per generare nuovi record che mantengono la coerenza referenziale e le proprietà statistiche.
 
 Il generatore è stato configurato per rispettare regole di business specifiche e vincoli di integrità. Il codice sorgente e la documentazione tecnica del generatore sono disponibili al seguente link:
-#link("<LINK_REPOSITORY_SDV>")[healthdata-synthetic-generator]
+#link("https://github.com/fedevita/healthdata-synthetic-generator.git")[healthdata-synthetic-generator]
 
 == Organizzazione per domini
 
@@ -220,7 +220,8 @@ La policy concede esclusivamente i permessi di lettura (`s3:GetObject`) e di lis
 
 Ecco la definizione della policy applicata:
 
-```json
+#figure(
+  ```json
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -237,7 +238,9 @@ Ecco la definizione della policy applicata:
         }
     ]
 }
-```
+```,
+  caption: "Policy IAM (least privilege)"
+)
 
 Questa configurazione impedisce qualsiasi operazione di scrittura o cancellazione e nega l'accesso a qualsiasi altra risorsa AWS non esplicitamente indicata.
 
@@ -272,7 +275,7 @@ Poiché l'account Snowflake non è ancora stato collegato, ho predisposto la Tru
 }
 ```
 
-I valori `<SNOWFLAKE_IAM_USER_ARN>` (l'identità utente IAM di Snowflake) e `<SNOWFLAKE_EXTERNAL_ID>` (un identificativo univoco per la sicurezza cross-account) verranno recuperati eseguendo il comando `DESC STORAGE INTEGRATION` su Snowflake e aggiornati in questa policy in un secondo momento.
+I valori `<SNOWFLAKE_IAM_USER_ARN>` (l'identità utente IAM di Snowflake) e `<SNOWFLAKE_EXTERNAL_ID>` (un identificativo univoco per la sicurezza cross-account) verranno recuperati eseguendo il comando `DESC INTEGRATION` su Snowflake e aggiornati in questa policy in un secondo momento.
 
 === Oggetti Snowflake predisposti
 
