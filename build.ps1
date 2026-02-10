@@ -2,7 +2,8 @@
 
 $SourceFile = "src\main.typ"
 $BuildDir = "build"
-$OutputFile = "$BuildDir\Report_Progetto11.pdf"
+$Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$OutputFile = "$BuildDir\Report_Progetto11_$Timestamp.pdf"
 
 # 1. Crea la cartella build se non esiste
 if (-not (Test-Path -Path $BuildDir)) {
