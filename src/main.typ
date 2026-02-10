@@ -38,9 +38,3 @@
 
 // Sezioni
 #include "sections/01_contesto_e_obiettivo.typ"
-#include "sections/02_synthetic_data_overview.typ"
-#include "sections/03_synthetic_data_sources.typ"
-#include "sections/04_synthetic_data_modeling.typ"
-#include "sections/05_synthetic_data_generation.typ"
-#include "sections/06_synthetic_data_storage_s3.typ"
-#include "sections/07_synthetic_data_architecture_notes.typ"
