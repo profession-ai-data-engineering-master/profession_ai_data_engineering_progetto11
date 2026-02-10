@@ -171,10 +171,9 @@ Il bucket è configurato con il blocco totale dell'accesso pubblico ("Block Publ
 
 // Screenshot suggerito: 01_s3_bucket_creazione.png
 #figure(
+  image("../assets/01_s3_bucket_creazione.png", width: 80%),
   caption: "Bucket S3 `healthcare-data-prod-eu` creato nella regione eu-central-1"
-)[
-  _Inserire qui screenshot della AWS Console che mostra il bucket e la regione_
-]
+)
 
 Ho strutturato i dati internamente utilizzando una gerarchia di cartelle (prefix) che riflette l'organizzazione logica del dataset, facilitando la futura ingestione automatizzata:
 
@@ -199,10 +198,9 @@ Ogni directory foglia (es. `pazienti/`) contiene esclusivamente i file dati (Par
 
 // Screenshot suggerito: 03_s3_bucket_struttura_prefix.png
 #figure(
+    image("../assets/03_s3_bucket_struttura_prefix.png", width: 80%),
   caption: "Struttura gerarchica dei prefix S3"
-)[
-  _Inserire qui screenshot della struttura delle cartelle nel bucket_
-]
+)
 
 === Ruolo IAM dedicato a Snowflake
 
@@ -211,10 +209,9 @@ Questo ruolo è stato progettato per essere "assumibile" da un'entità esterna f
 
 // Screenshot suggerito: 06_iam_role_snowflake_readonly.png
 #figure(
+  image("../assets/06_iam_role_snowflake_readonly.png", width: 80%),
   caption: "Ruolo IAM `snowflake_s3_readonly_role` configurato"
-)[
-  _Inserire qui screenshot della console IAM con il dettaglio del ruolo_
-]
+)
 
 === Policy IAM (Least Privilege)
 
@@ -246,10 +243,9 @@ Questa configurazione impedisce qualsiasi operazione di scrittura o cancellazion
 
 // Screenshot suggerito: 05_iam_policy_s3_least_privilege.png
 #figure(
+  image("../assets/05_iam_policy_s3_least_privilege.png", width: 80%),
   caption: "Policy IAM `snowflake_s3_raw_read_policy`"
-)[
-  _Inserire qui screenshot della policy JSON applicata_
-]
+)
 
 === Trust policy del ruolo IAM (predisposta con placeholder)
 
@@ -282,10 +278,10 @@ I valori `<SNOWFLAKE_IAM_USER_ARN>` (l'identità utente IAM di Snowflake) e `<SN
 
 In vista dell'integrazione, ho già definito la nomenclatura standard per gli oggetti Snowflake che andrò a creare:
 
-1.  **Storage Integration**: *`s3_int_healthcare_data`*
+1.  *Storage Integration*: *`s3_int_healthcare_data`*
     Sarà l'oggetto a livello di account che memorizzerà l'ARN del ruolo IAM (`arn:aws:iam::...:role/snowflake_s3_readonly_role`) e gestirà l'autenticazione.
 
-2.  **External Stage**: *`stage_healthcare_raw`*
+2.  *External Stage*: *`stage_healthcare_raw`*
     Sarà l'oggetto a livello di database che punterà fisicamente al bucket S3 (`s3://healthcare-data-prod-eu/snowflake/raw/`) utilizzando l'integrazione di storage.
 
 Avere questi riferimenti già definiti mi permette di procedere con una configurazione AWS coerente e pronta all'uso ("Snowflake-ready"), minimizzando i tempi di setup quando l'ambiente Data Warehouse sarà disponibile.
