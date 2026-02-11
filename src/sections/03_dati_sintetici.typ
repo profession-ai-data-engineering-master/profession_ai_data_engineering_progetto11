@@ -177,7 +177,8 @@ Il bucket è configurato con il blocco totale dell'accesso pubblico ("Block Publ
 
 Ho strutturato i dati internamente utilizzando una gerarchia di cartelle (prefix) che riflette l'organizzazione logica del dataset, facilitando la futura ingestione automatizzata:
 
-```text
+#figure(
+  ```text
 healthcare-data-prod-eu/
 └── snowflake/
     └── raw/
@@ -192,7 +193,9 @@ healthcare-data-prod-eu/
         └── iot/
             ├── dispositivi/
             └── parametri_vitali/
-```
+```,
+  caption: "Struttura delle cartelle nel bucket S3"
+)
 
 Ogni directory foglia (es. `pazienti/`) contiene esclusivamente i file dati (Parquet) relativi a quella specifica entità, garantendo omogeneità di schema.
 
@@ -255,7 +258,8 @@ Questa configurazione impedisce qualsiasi operazione di scrittura o cancellazion
 Per completare la configurazione di sicurezza, il ruolo IAM necessita di una "Trust Relationship" che autorizzi specificamente l'account Snowflake ad assumerlo.
 Poiché l'account Snowflake non è ancora stato collegato, ho predisposto la Trust Policy utilizzando dei placeholder espliciti per i valori che verranno generati lato Snowflake:
 
-```json
+#figure(
+  ```json
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -273,7 +277,9 @@ Poiché l'account Snowflake non è ancora stato collegato, ho predisposto la Tru
     }
   ]
 }
-```
+```,
+  caption: "Trust Policy del ruolo IAM (con placeholder)"
+)
 
 I valori `<SNOWFLAKE_IAM_USER_ARN>` (l'identità utente IAM di Snowflake) e `<SNOWFLAKE_EXTERNAL_ID>` (un identificativo univoco per la sicurezza cross-account) verranno recuperati eseguendo il comando `DESC INTEGRATION` su Snowflake e aggiornati in questa policy in un secondo momento.
 
