@@ -2,46 +2,91 @@
 
 == Introduzione al piano di azione
 
-In questo piano di azione definisco la strategia che ho adottato per la realizzazione del progetto, seguendo un approccio strutturato e incrementale tipico delle pipeline di Data Engineering. Ho organizzato l'attività in fasi sequenziali che guidano l'intero ciclo di vita del dato, dalla sua genesi fino alla messa in sicurezza e alla consegna.
+In questo piano di azione definisco la strategia adottata per la realizzazione del progetto, seguendo un approccio strutturato e incrementale tipico delle pipeline di Data Engineering.
 
-Per garantire la massima chiarezza espositiva e progettuale, ho strutturato il report in modo modulare: ogni fase che descrivo di seguito corrisponde a una specifica sezione del documento, guidando il lettore attraverso l'evoluzione del progetto.
+Il percorso copre l’intero ciclo di vita del dato: dalla generazione sintetica alla progettazione architetturale, dalla modellazione alla definizione delle politiche di sicurezza, fino al popolamento dei layer analitici e alla validazione finale.
+
+Ogni fase descritta di seguito corrisponde a una specifica sezione del documento, mantenendo coerenza tra sviluppo tecnico e organizzazione espositiva.
 
 == Fase 1: Generazione preliminare di dati sintetici
 
-Punto di partenza del progetto è la disponibilità del dato. In assenza di dati reali, e per garantire il rigoroso rispetto delle normative sulla privacy e del GDPR, come prima attività ho generato un dataset sintetico verosimile. Questa fase preliminare mi ha permesso di definire e validare le caratteristiche del dominio clinico prima ancora di atterrare su Snowflake.
+Il punto di partenza del progetto è la disponibilità del dato. In assenza di dati reali, e per garantire il rispetto delle normative sulla privacy e del GDPR, genero un dataset sintetico verosimile.
 
-Ho prodotto i dati utilizzando uno script basato sulla libreria *SDV (Synthetic Data Vault)*, che assicura la coerenza statistica e relazionale delle informazioni. Lo script di generazione è disponibile in un repository GitHub dedicato: 
+I dati sono prodotti tramite uno script basato sulla libreria *SDV (Synthetic Data Vault)*, che assicura coerenza statistica e relazionale. Lo script di generazione è disponibile nel repository GitHub dedicato:
+
 #link("https://github.com/fedevita/healthdata-synthetic-generator.git")[
   vedi healthdata-synthetic-generator
 ]
 
-Operativamente, carico i dati generati su uno storage ad oggetti *Amazon S3*, configurato come area di *staging* o *landing zone*. Con questa scelta simulo realisticamente l'acquisizione da una sorgente esterna eterogenea. I dettagli di questo processo sono descritti nella sezione dedicata del report.
+Operativamente, i dati vengono caricati su *Amazon S3*, configurato come area di staging (*landing zone*), simulando l'acquisizione da una sorgente esterna eterogenea.
 
 == Fase 2: Analisi dei requisiti e definizione del perimetro
 
-Con i dati disponibili (seppur sintetici) e gli obiettivi di business chiari, nella seconda fase mi concentro sull'analisi puntuale dei requisiti del progetto. In questo step, traduco le necessità di consolidamento, accesso real-time, analisi avanzata e conformità in specifiche tecniche di modellazione.
+Con i dati disponibili e gli obiettivi di business definiti, mi concentro sull’analisi dei requisiti funzionali e non funzionali.
 
-Attraverso l'analisi identifico le entità di business e le loro relazioni, ponendo le basi per le scelte architetturali successive. Approfondisco questa fase logica in una sezione autonoma del documento.
+Traduco le esigenze di consolidamento, analisi KPI, interrogazioni temporali e governance in specifiche tecniche di modellazione, identificando entità, relazioni e vincoli principali.
 
 == Fase 3: Disegno architetturale su Snowflake
 
-Una volta definito il perimetro, procedo alla progettazione dell'architettura su Snowflake. In questa fase definisco l'organizzazione logica del database e degli schemi, implementando concettualmente una stratificazione dei dati (ad esempio livelli *Raw*, *Curated* e *Analytics*) per governare l'evoluzione dell'informazione grezza verso insight affidabili.
+Definito il perimetro, progetto l'architettura su Snowflake organizzando database e schemi secondo una stratificazione logica a livelli:
 
-Ho pensato l'architettura per supportare sia l'ingestione efficiente che l'applicazione delle politiche di sicurezza. Le scelte architetturali delineano il "contenitore" in cui vivrà il modello dati e sono documentate in una specifica sezione del report.
+- RAW (staging)
+- CURATED (standardizzazione)
+- ANALYTICS (data mart)
+
+Questa struttura garantisce separazione dei livelli di qualità del dato e prepara il terreno per sicurezza e trasformazioni controllate.
 
 == Fase 4: Progettazione del modello dati
 
-Questa è la fase centrale del progetto, in cui realizzo il *deliverable principale*: lo schema delle tabelle su Snowflake. Partendo dall'analisi dei requisiti e dalla struttura dei dati sintetici generati, disegno un modello dati robusto e scalabile.
+Questa fase rappresenta il cuore del progetto. Definisco il modello fisico su Snowflake, progettando le tabelle dei layer RAW, CURATED e ANALYTICS.
 
-Ho progettato il modello per supportare dualmente l'accesso operativo (consultazione puntuale della storia clinica) e l'analisi aggregata (KPI ospedalieri). Definisco nel dettaglio le principali entità cliniche, le chiavi e le relazioni. Tratto la progettazione completa dello schema nella sezione dedicata al modello dati.
+Vengono esplicitati:
 
-== Fase 5: Sicurezza e conformità (RBAC)
+- grain delle tabelle dei fatti,
+- chiavi primarie e surrogate,
+- relazioni tra dimensioni e fatti,
+- logiche dimensionali e temporali.
 
-Parallelamente alla modellazione delle entità, implemento la strategia di sicurezza, intrinsecamente legata alla struttura dei dati. In questa fase definisco come proteggere le informazioni sensibili segregando l'accesso tramite un modello *RBAC (Role-Based Access Control)*.
+Il modello è concepito per supportare sia accesso operativo puntuale sia analisi aggregata tramite KPI.
 
-Applicando il principio del minimo privilegio, stabilisco le regole che governano chi può vedere cosa, sfruttando le funzionalità native di Snowflake per la compliance GDPR (come il data masking concettuale). Espongo dettagliatamente le politiche di sicurezza e governance nella relativa sezione del report.
+== Fase 5: Definizione della sicurezza e governance (RBAC)
 
-== Fase 6: Finalizzazione e consegna
+Una volta definito il modello dati, strutturo la strategia di sicurezza secondo un approccio RBAC (Role-Based Access Control).
 
-Concludo il percorso con la rifinitura del modello dati e il consolidamento dell'intera documentazione progettuale. In questa fase finale verifico la coerenza tra le sezioni e la completezza rispetto ai requisiti iniziali, preparando il materiale finale per la consegna in formato `.zip`. Questa attività chiude il ciclo di lavoro descritto nel piano di azione.
+Applico il principio del minimo privilegio, definendo ruoli e permessi coerenti con:
 
+- la separazione tra layer RAW, CURATED e ANALYTICS,
+- la protezione dei dati sensibili,
+- la distinzione tra utenti tecnici e utenti analitici.
+
+La sicurezza viene quindi integrata come componente strutturale dell’architettura.
+
+== Fase 6: Implementazione del caricamento dati e delle pipeline di trasformazione
+
+Con modello e sicurezza definiti, implemento il flusso di popolamento dei dati.
+
+Il processo prevede:
+
+- ingestione nel layer RAW,
+- trasformazione e standardizzazione nel layer CURATED,
+- costruzione delle tabelle dimensionali e dei fatti nel layer ANALYTICS.
+
+In questa fase vengono applicate logiche di pulizia, gestione delle chiavi, normalizzazione e controlli di qualità del dato, garantendo coerenza tra modello teorico e dati effettivamente caricati.
+
+== Fase 7: Validazione analitica e query dimostrative
+
+A seguito del popolamento completo del modello, verifico la sua efficacia tramite interrogazioni SQL sul layer ANALYTICS.
+
+Dimostro che:
+
+- le tabelle dei fatti supportano correttamente le aggregazioni richieste,
+- le dimensioni consentono analisi temporali e per reparto,
+- la struttura permette drill-down su singolo evento.
+
+La validazione conferma che l’intero flusso produce insight coerenti con i requisiti iniziali.
+
+== Fase 8: Finalizzazione e consegna
+
+Concludo il progetto verificando la coerenza complessiva tra requisiti, architettura, modello, sicurezza, pipeline e validazione.
+
+Rifinisco la documentazione e preparo il materiale finale per la consegna in formato `.zip`.

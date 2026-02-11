@@ -44,4 +44,6 @@
 #include "sections/05_architettura_snowflake.typ"
 #include "sections/06_modello_dati.typ"
 #include "sections/07_sicurezza_conformita.typ"
-#include "sections/08_conclusioni.typ"
+#include "sections/08_caricamento_e_pipelines.typ"
+#include "sections/09_validazione_analitica.typ"
+#include "sections/10_conclusioni.typ"

@@ -9,6 +9,15 @@ $OutputFile = "$BuildDir\Report_Progetto11_$Timestamp.pdf"
 if (-not (Test-Path -Path $BuildDir)) {
     Write-Host "Creazione cartella '$BuildDir'..." -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $BuildDir | Out-Null
+} else {
+    # Svuota la cartella build mantenendo la directory
+    Write-Host "Svuotamento cartella '$BuildDir'..." -ForegroundColor Cyan
+    try {
+        Get-ChildItem -Path $BuildDir -Force | Remove-Item -Force -Recurse
+    } catch {
+        Write-Error "Errore durante lo svuotamento della cartella '$BuildDir': $_"
+        exit 1
+    }
 }
 
 # 2. Controlla se Typst è installato
