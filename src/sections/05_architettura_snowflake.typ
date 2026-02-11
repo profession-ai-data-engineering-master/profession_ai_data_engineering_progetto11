@@ -28,6 +28,15 @@ SHOW DATABASES LIKE 'HEALTHCARE_DW';
 
 // Screenshot suggerito: 01_sf_database_creato.png
 
+Per assicurarmi che tutti i comandi successivi vengano eseguiti nel contesto corretto, ho impostato il database attivo:
+
+#figure(
+  ```sql
+USE DATABASE HEALTHCARE_DW;
+```,
+  caption: "Impostazione del database attivo"
+)
+
 == Implementazione del Data Layering (Schemi)
 
 Per riflettere la stratificazione dei dati definita durante l'analisi, ho suddiviso il database in tre schemi distinti. Questa organizzazione logica mi permette di governare il ciclo di vita del dato:
@@ -58,15 +67,28 @@ SHOW SCHEMAS IN DATABASE HEALTHCARE_DW;
 
 // Screenshot suggerito: 02_sf_schemas_creati.png
 
+// Screenshot suggerito: 06_sf_ui_database_structure.png (Vista grafica Database -> Schemas)
+
+Per impostare il contesto di lavoro per le operazioni successive, come la creazione delle tabelle nel layer RAW, ho selezionato lo schema di default:
+
+#figure(
+  ```sql
+USE SCHEMA HEALTHCARE_DW.RAW;
+```,
+  caption: "Impostazione schema attivo"
+)
+
+// Screenshot suggerito: 07_sf_use_schema_raw.png
+
 == Configurazione delle risorse di calcolo (Virtual Warehouse)
 
-Per garantire prestazioni ottimali e isolamento dei carichi di lavoro, ho adottato una strategia multi-warehouse. In Snowflake, separare le risorse di calcolo impedisce che operazioni diverse (come un caricamento massivo dati) competano per le stesse risorse di una query di analisi, rallentandola.
+Per garantire prestazioni ottimali e isolamento dei carichi di lavoro, ho adottato una strategia multi-warehouse. In Snowflake, separare le risorse di calcolo impedisce che operazioni diverse (come un caricamento massivo dati) competano per le stesse risorse di una query di analisi, rallentandola. Ogni warehouse opera in modo indipendente, permettendo di scalare verticalmente o orizzontalmente specifici carichi di lavoro senza impattare le prestazioni delle altre attività.
 
 Ho quindi definito tre warehouse distinti, ciascuno dimensionato in base al compito specifico.
 
 === Warehouse per Ingestion
 
-Il primo warehouse è dedicato alle operazioni di caricamento dati (ETL/ELT). Ho scelto una taglia *X-Small* per contenere i costi durante le fasi di copia e trasformazione iniziale.
+Il primo warehouse è dedicato alle operazioni di caricamento dati (ETL/ELT). Ho scelto una taglia *XSMALL* per contenere i costi durante le fasi di copia e trasformazione iniziale.
 
 #figure(
   ```sql
@@ -90,6 +112,15 @@ SHOW WAREHOUSES LIKE 'WH_INGEST';
 
 // Screenshot suggerito: 03_sf_warehouse_creato.png
 
+Per attivare questo warehouse per la sessione corrente, utilizzo il comando:
+
+#figure(
+  ```sql
+USE WAREHOUSE WH_INGEST;
+```,
+  caption: "Attivazione Warehouse di Ingestione"
+)
+
 === Warehouse per Operazioni (Consultazione)
 
 Per le query frequenti a bassa latenza e l'interrogazione puntuale dei dati, ho creato un warehouse separato. Questo garantisce che le attività di consultazione non vengano bloccate dai processi di caricamento.
@@ -107,9 +138,18 @@ CREATE WAREHOUSE WH_OPERATIONS
 
 // Screenshot suggerito: 04_sf_wh_operations.png
 
+Per utilizzarlo:
+
+#figure(
+  ```sql
+USE WAREHOUSE WH_OPERATIONS;
+```,
+  caption: "Attivazione Warehouse per Operazioni"
+)
+
 === Warehouse per Analisi (Analytics)
 
-Infine, ho configurato un warehouse dedicato ai carichi di lavoro analitici complessi (Query OLAP, calcolo KPI, aggregazioni). Per questo carico ho selezionato una taglia *Small* (doppia potenza rispetto a X-Small), necessaria per gestire query più onerose su volumi di dati aggregati.
+Infine, ho configurato un warehouse dedicato ai carichi di lavoro analitici complessi (query analitiche su dataset aggregati e calcolo di KPI complessi). Per questo carico ho selezionato una taglia *Small* (doppia potenza rispetto a XSMALL), necessaria per gestire query più onerose su volumi di dati aggregati.
 
 #figure(
   ```sql
@@ -124,9 +164,26 @@ CREATE WAREHOUSE WH_ANALYTICS
 
 // Screenshot suggerito: 05_sf_wh_analytics.png
 
+Per attivarlo prima delle query analitiche:
+
+#figure(
+  ```sql
+USE WAREHOUSE WH_ANALYTICS;
+```,
+  caption: "Attivazione Warehouse per Analytics"
+)
+
 == Predisposizione per l'integrazione con lo Storage
 
 In questa fase ho preparato l'architettura interna per accogliere i dati esterni. La creazione degli oggetti specifici per l'integrazione con lo storage esterno (S3) e le relative definizioni di *Storage Integration* e *File Format* verranno trattate nel dettaglio nella fase di ingestione, una volta configurati i permessi lato cloud provider.
+
+Tuttavia, ho già definito la strategia di integrazione:
+- Utilizzerò una *Storage Integration* basata su ruoli IAM per garantire la sicurezza senza gestire chiavi statiche.
+- I dati verranno letti direttamente dai file in formato *Parquet* presenti su S3.
+- L'ingestione seguirà il paradigma *ELT*, caricando i dati grezzi nel layer RAW e trasformandoli successivamente tramite la potenza di calcolo di Snowflake.
+- I dettagli operativi completi saranno descritti nella sezione dedicata all'ingestione.
+
+Questa architettura mantiene lo storage esterno disaccoppiato dal livello di calcolo, migliorando significativamente la sicurezza, la scalabilità e la governance del dato.
 
 == Riepilogo assetto architetturale
 
@@ -138,8 +195,8 @@ Al termine di queste operazioni, l'ambiente Snowflake è configurato come segue:
   - `CURATED` $->$ Trasformazioni
   - `ANALYTICS` $->$ Consumo dati
 - *Compute*:
-  - `WH_INGEST` (X-Small) $->$ Caricamento dati
-  - `WH_OPERATIONS` (X-Small) $->$ Query operative
+  - `WH_INGEST` (XSMALL) $->$ Caricamento dati
+  - `WH_OPERATIONS` (XSMALL) $->$ Query operative
   - `WH_ANALYTICS` (Small) $->$ Analisi avanzata
 
 Questa configurazione costituisce le fondamenta per l'implementazione del modello dati fisico che descriverò nella prossima sezione.
