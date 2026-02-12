@@ -59,7 +59,7 @@ CREATE OR REPLACE STORAGE INTEGRATION s3_int_healthcare_data
 	TYPE = EXTERNAL_STAGE
 	STORAGE_PROVIDER = S3
 	ENABLED = TRUE
-	STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::<AWS_ACCOUNT_ID>:role/snowflake_s3_readonly_role'
+	STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::607374883457:role/snowflake_s3_readonly_role'
 	STORAGE_ALLOWED_LOCATIONS = ('s3://healthcare-data-prod-eu/snowflake/raw/');
 ```,
 	caption: "Creazione Storage Integration per accesso a S3"
@@ -92,12 +92,12 @@ La trust policy del ruolo IAM utilizza questi due valori per prevenire *confused
 			"Sid": "AllowSnowflakeAssumeRole",
 			"Effect": "Allow",
 			"Principal": {
-				"AWS": "<STORAGE_AWS_IAM_USER_ARN_FROM_DESC>"
+				"AWS": "arn:aws:iam::115005006440:user/32xf1000-s"
 			},
 			"Action": "sts:AssumeRole",
 			"Condition": {
 				"StringEquals": {
-					"sts:ExternalId": "<STORAGE_AWS_EXTERNAL_ID_FROM_DESC>"
+					"sts:ExternalId": "FU94465_SFCRole=4_22v+nzVLdIFY690bbCyXzu0xi3g="
 				}
 			}
 		}
@@ -113,7 +113,7 @@ File format e stage esterno sono creati nello schema `RAW` del database `HEALTHC
 
 #figure(
 	```sql
-USE ROLE SYSADMIN;
+USE ROLE ACCOUNTADMIN;
 USE DATABASE HEALTHCARE_DW;
 USE SCHEMA HEALTHCARE_DW.RAW;
 
@@ -140,6 +140,9 @@ DESC STAGE HEALTHCARE_DW.RAW.stage_healthcare_raw;
 ```
 
 // Screenshot suggerito: 02_sf_show_desc_stage_healthcare_raw.png
+#figure(
+  image("../assets/02_sf_show_desc_stage_healthcare_raw.png", width: 80%)
+)
 
 #figure(
 	```sql
@@ -149,6 +152,48 @@ LIST @HEALTHCARE_DW.RAW.stage_healthcare_raw/ehr/pazienti/;
 )
 
 // Screenshot suggerito: 03_sf_list_stage_ehr_pazienti.png
+#figure(
+  image("../assets/03_sf_list_stage_ehr_pazienti.png", width: 80%)
+)
+
+== Setup Schema Tecnico (PIPELINE)
+
+Prima di definire le procedure e i task, viene predisposto lo schema tecnico dedicato all'orchestrazione.
+Questo schema ospita le procedure stored e i task chain, separando la logica di controllo dai dati.
+
+#figure(
+	```sql
+USE ROLE ACCOUNTADMIN;
+USE DATABASE HEALTHCARE_DW;
+
+-- Creazione schema tecnico per orchestrazione
+CREATE SCHEMA IF NOT EXISTS PIPELINE;
+```,
+	caption: "Creazione schema PIPELINE"
+)
+
+I privilegi sullo schema vengono assegnati per consentire al `ROLE_DATA_ENGINEER` di creare e gestire gli oggetti di pipeline, e al `ROLE_COMPLIANCE_OFFICER` di verificarli.
+
+#figure(
+	```sql
+USE ROLE SECURITYADMIN;
+
+-- Grant per Data Engineer (Owner delle procedure/task)
+GRANT USAGE ON SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+GRANT CREATE PROCEDURE ON SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+GRANT CREATE TASK ON SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+
+-- Grant anticipati per l'operatività di ingestione (Storage + Warehouse)
+GRANT USAGE ON FILE FORMAT HEALTHCARE_DW.RAW.ff_parquet TO ROLE ROLE_DATA_ENGINEER;
+GRANT USAGE ON STAGE HEALTHCARE_DW.RAW.stage_healthcare_raw TO ROLE ROLE_DATA_ENGINEER;
+GRANT USAGE ON WAREHOUSE WH_INGEST TO ROLE ROLE_DATA_ENGINEER;
+
+-- Grant per Compliance Officer (Audit)
+GRANT USAGE ON SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_COMPLIANCE_OFFICER;
+```,
+	caption: "Assegnazione privilegi schema PIPELINE"
+)
+
 
 == Pipeline ELT (flusso unico: task → procedure)
 
@@ -203,36 +248,54 @@ CREATE OR REPLACE PROCEDURE sp_load_raw()
 	EXECUTE AS OWNER
 AS
 $$
+BEGIN
 	COPY INTO HEALTHCARE_DW.RAW.PAZIENTI
 	FROM @HEALTHCARE_DW.RAW.stage_healthcare_raw/ehr/pazienti/
 	FILE_FORMAT = (TYPE = PARQUET)
+	MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
 	ON_ERROR = 'ABORT_STATEMENT';
 
 	COPY INTO HEALTHCARE_DW.RAW.REPARTI
 	FROM @HEALTHCARE_DW.RAW.stage_healthcare_raw/erp/reparti/
 	FILE_FORMAT = (TYPE = PARQUET)
+	MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
 	ON_ERROR = 'ABORT_STATEMENT';
 
 	COPY INTO HEALTHCARE_DW.RAW.DISPOSITIVI
 	FROM @HEALTHCARE_DW.RAW.stage_healthcare_raw/iot/dispositivi/
 	FILE_FORMAT = (TYPE = PARQUET)
+	MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
 	ON_ERROR = 'ABORT_STATEMENT';
 
 	COPY INTO HEALTHCARE_DW.RAW.RICOVERI
 	FROM @HEALTHCARE_DW.RAW.stage_healthcare_raw/ehr/ricoveri/
 	FILE_FORMAT = (TYPE = PARQUET)
+	MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
 	ON_ERROR = 'ABORT_STATEMENT';
 
 	COPY INTO HEALTHCARE_DW.RAW.PARAMETRI_VITALI
 	FROM @HEALTHCARE_DW.RAW.stage_healthcare_raw/iot/parametri_vitali/
 	FILE_FORMAT = (TYPE = PARQUET)
+	MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
 	ON_ERROR = 'ABORT_STATEMENT';
 
 	RETURN 'OK';
+END;
 $$;
 ```
 
 // Screenshot suggerito: 04_sf_create_procedure_sp_load_raw.png
+#figure(
+  image("../assets/04_sf_create_procedure_sp_load_raw.png", width: 80%)
+)
+
+*Esecuzione procedurale (Test di caricamento)*
+
+Per generare le evidenze di caricamento e verificare il funzionamento, invoco la procedura manualmente.
+
+```sql
+CALL HEALTHCARE_DW.PIPELINE.sp_load_raw();
+```
 
 *Evidenza: tracciabilità file-level dell'ingestione (COPY_HISTORY)*
 
@@ -250,7 +313,9 @@ ORDER BY LAST_LOAD_TIME DESC;
 ```
 
 // Screenshot suggerito: 05_sf_copy_history_raw_pazienti.png
-
+#figure(
+  image("../assets/05_sf_copy_history_raw_pazienti.png", width: 80%)
+)
 *Evidenza: idempotenza file-level (nessun reload a parità di input, senza FORCE)*
 
 Questa query raggruppa per `FILE_NAME` e permette di verificare che, rieseguendo `sp_load_raw()` a parità di input e senza `FORCE`, il numero di load per file non incrementi.
@@ -274,6 +339,9 @@ ORDER BY N_LOADS DESC, LAST_LOAD_TIME DESC;
 ```
 
 // Screenshot suggerito: 05b_sf_copy_history_idempotence_raw_pazienti.png
+#figure(
+  image("../assets/05b_sf_copy_history_idempotence_raw_pazienti.png", width: 80%)
+)
 
 ==== Natura del layer RAW
 
@@ -350,6 +418,7 @@ CREATE OR REPLACE PROCEDURE sp_transform_curated()
 	EXECUTE AS OWNER
 AS
 $$
+BEGIN
 	-- a) Quarantena come snapshot per run
 	-- MUST-FIX: idempotenza quarantena (stesso RAW => stessa quarantena, niente crescita per rerun)
 	TRUNCATE TABLE HEALTHCARE_DW.CURATED.RICOVERI_QUARANTENA;
@@ -1140,6 +1209,7 @@ CREATE OR REPLACE PROCEDURE sp_publish_analytics()
 	EXECUTE AS OWNER
 AS
 $$
+BEGIN
 	-- a) DIM
 	MERGE INTO HEALTHCARE_DW.ANALYTICS.DIM_PAZIENTE t
 	USING (
@@ -1278,6 +1348,7 @@ $$
 	);
 
 	RETURN 'OK';
+END;
 $$;
 ```
 

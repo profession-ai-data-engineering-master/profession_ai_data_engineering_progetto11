@@ -50,6 +50,18 @@ Il `ROLE_COMPLIANCE_OFFICER` eredita il `ROLE_DATA_ANALYST`: questo assicura che
 	GRANT ROLE ROLE_DATA_ANALYST TO ROLE ROLE_COMPLIANCE_OFFICER;
 	```
 
+=== Assegnazione ruoli all'utente di lab
+
+Per facilitare il testing e lo switch tra i diversi profili durante la validazione, assegno esplicitamente i tre ruoli definiti all'utente principale (`FEDEVITA1997`).
+
+	```sql
+	USE ROLE SECURITYADMIN;
+
+	GRANT ROLE ROLE_DATA_ENGINEER TO USER FEDEVITA1997;
+	GRANT ROLE ROLE_DATA_ANALYST TO USER FEDEVITA1997;
+	GRANT ROLE ROLE_COMPLIANCE_OFFICER TO USER FEDEVITA1997;
+	```
+
 == 7.3 Assegnazione privilegi per layer
 
 La matrice dei privilegi è costruita per schema, riflettendo la funzione di ciascun layer.
