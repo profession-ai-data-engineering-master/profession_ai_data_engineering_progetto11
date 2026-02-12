@@ -38,11 +38,15 @@ _DDL Snowflake: creazione ruoli_
 	CREATE ROLE IF NOT EXISTS ROLE_COMPLIANCE_OFFICER;
 	```
 
-_Opzionale (gerarchia ruoli): riuso dei privilegi di consultazione_
+=== Gerarchia dei ruoli
+
+Per semplificare la gestione e garantire che chi controlla abbia sempre almeno la stessa visibilità di chi analizza, ho stabilito una gerarchia esplicita.
+Il `ROLE_COMPLIANCE_OFFICER` eredita il `ROLE_DATA_ANALYST`: questo assicura che qualsiasi oggetto esposto per l'analisi sia automaticamente visibile (e auditabile) dal Compliance Officer senza necessità di doppi privilegi.
 
 	```sql
 	USE ROLE SECURITYADMIN;
 
+	-- Il Compliance Officer "è anche" un Data Analyst (vede ciò che vede l'analista)
 	GRANT ROLE ROLE_DATA_ANALYST TO ROLE ROLE_COMPLIANCE_OFFICER;
 	```
 
@@ -63,20 +67,18 @@ Questo isolamento riduce la possibilità di interferenza tra ingestion/ELT e que
 	GRANT USAGE ON WAREHOUSE WH_ANALYTICS TO ROLE ROLE_DATA_ENGINEER;
 
 	GRANT USAGE ON WAREHOUSE WH_ANALYTICS TO ROLE ROLE_DATA_ANALYST;
-	GRANT USAGE ON WAREHOUSE WH_ANALYTICS TO ROLE ROLE_COMPLIANCE_OFFICER;
+	-- Il ROLE_COMPLIANCE_OFFICER eredita USAGE su WH_ANALYTICS
 	```
 
-_Prerequisiti comuni (accesso al database)_
+	_Prerequisiti comuni (accesso al database)_
 
 	```sql
 	USE ROLE SECURITYADMIN;
 
 	GRANT USAGE ON DATABASE HEALTHCARE_DW TO ROLE ROLE_DATA_ENGINEER;
 	GRANT USAGE ON DATABASE HEALTHCARE_DW TO ROLE ROLE_DATA_ANALYST;
-	GRANT USAGE ON DATABASE HEALTHCARE_DW TO ROLE ROLE_COMPLIANCE_OFFICER;
-	```
-
-=== RAW
+	-- Il ROLE_COMPLIANCE_OFFICER eredita USAGE sul Database
+  ```
 
 Nel layer `RAW` autorizzo la scrittura solo al ruolo tecnico; gli analisti non hanno accesso diretto alle tabelle mirror.
 
@@ -107,19 +109,14 @@ Nel layer `CURATED` il `ROLE_DATA_ENGINEER` deve poter effettuare trasformazioni
 
 	GRANT USAGE ON SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ENGINEER;
 	GRANT USAGE ON SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ANALYST;
-	GRANT USAGE ON SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_COMPLIANCE_OFFICER;
 
 	-- Data Engineer: trasformazioni e caricamenti
 	GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ENGINEER;
 	GRANT SELECT, INSERT, UPDATE, DELETE ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ENGINEER;
 
-	-- Analyst: sola lettura
+	-- Analyst: sola lettura (ereditata anche da Compliance)
 	GRANT SELECT ON ALL TABLES IN SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ANALYST;
 	GRANT SELECT ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ANALYST;
-
-	-- Compliance: lettura completa
-	GRANT SELECT ON ALL TABLES IN SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_COMPLIANCE_OFFICER;
-	GRANT SELECT ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_COMPLIANCE_OFFICER;
 	```
 
 === ANALYTICS
@@ -131,19 +128,14 @@ Nel layer `CURATED` il `ROLE_DATA_ENGINEER` deve poter effettuare trasformazioni
 
 	GRANT USAGE ON SCHEMA HEALTHCARE_DW.ANALYTICS TO ROLE ROLE_DATA_ENGINEER;
 	GRANT USAGE ON SCHEMA HEALTHCARE_DW.ANALYTICS TO ROLE ROLE_DATA_ANALYST;
-	GRANT USAGE ON SCHEMA HEALTHCARE_DW.ANALYTICS TO ROLE ROLE_COMPLIANCE_OFFICER;
 
-	-- Analyst: consumo (SELECT)
+	-- Analyst: consumo (SELECT) - Il Compliance Officer eredita questi privilegi
 	GRANT SELECT ON ALL TABLES IN SCHEMA HEALTHCARE_DW.ANALYTICS TO ROLE ROLE_DATA_ANALYST;
 	GRANT SELECT ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.ANALYTICS TO ROLE ROLE_DATA_ANALYST;
 
 	-- Data Engineer: pubblicazione e manutenzione delle tabelle del data mart
 	GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA HEALTHCARE_DW.ANALYTICS TO ROLE ROLE_DATA_ENGINEER;
 	GRANT SELECT, INSERT, UPDATE, DELETE ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.ANALYTICS TO ROLE ROLE_DATA_ENGINEER;
-
-	-- Compliance: accesso completo ai fini di controllo
-	GRANT SELECT ON ALL TABLES IN SCHEMA HEALTHCARE_DW.ANALYTICS TO ROLE ROLE_COMPLIANCE_OFFICER;
-	GRANT SELECT ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.ANALYTICS TO ROLE ROLE_COMPLIANCE_OFFICER;
 	```
 
 == 7.4 Protezione dei dati sensibili (PII)
@@ -154,7 +146,8 @@ Per rendere la protezione *applicativa e verificabile*, utilizzo *Masking Policy
 _Esempio: masking di `DIM_PAZIENTE.CITTA` con visibilità piena solo per Compliance (e ruolo tecnico)_
 
 	```sql
-	USE ROLE SECURITYADMIN;
+	-- Usecase: creazione oggetto di policy (richiede privilegi globali o ACCOUNTADMIN)
+	USE ROLE ACCOUNTADMIN;
 	USE DATABASE HEALTHCARE_DW;
 	USE SCHEMA HEALTHCARE_DW.ANALYTICS;
 
@@ -162,10 +155,11 @@ _Esempio: masking di `DIM_PAZIENTE.CITTA` con visibilità piena solo per Complia
 	RETURNS STRING ->
 		CASE
 			WHEN val IS NULL THEN NULL
-			WHEN CURRENT_ROLE() IN ('ROLE_COMPLIANCE_OFFICER', 'ROLE_DATA_ENGINEER') THEN val
+			WHEN CURRENT_ROLE() IN ('ROLE_COMPLIANCE_OFFICER', 'ROLE_DATA_ENGINEER', 'ACCOUNTADMIN') THEN val
 			ELSE '***'
 		END;
 
+	-- Applicazione della policy alla colonna
 	ALTER TABLE DIM_PAZIENTE
 		MODIFY COLUMN CITTA
 		SET MASKING POLICY MP_DIM_PAZIENTE_CITTA;
