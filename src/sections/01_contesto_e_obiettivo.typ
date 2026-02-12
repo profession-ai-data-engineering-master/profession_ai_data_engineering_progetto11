@@ -14,7 +14,8 @@ Un grande ospedale situato in un’area urbana ha espresso la necessità di mode
 
 == Obiettivo
 
-Creare un sistema centralizzato basato su *Snowflake* per gestire in modo *sicuro* e *scalabile* i dati dei pazienti. L’obiettivo è consentire al personale medico e amministrativo di accedere rapidamente alle informazioni, garantendo al contempo il massimo livello di *privacy* e la conformità normativa (*GDPR*).
+Creare un sistema centralizzato basato su *Snowflake* per gestire in modo *sicuro* e *scalabile* i dati dei pazienti. L’obiettivo è consentire al personale medico e amministrativo 
+di accedere rapidamente alle informazioni, garantendo al contempo il massimo livello di *privacy* e la conformità normativa (*GDPR*).
 
 #note_box[
 	*Nota:* l’architettura e il modello dati dovranno supportare controlli di accesso granulari e protezione dei dati sensibili, in linea con i requisiti di sicurezza e conformità.

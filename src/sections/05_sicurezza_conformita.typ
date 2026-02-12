@@ -11,11 +11,17 @@ La separazione `RAW → CURATED → ANALYTICS` non rappresenta solo una scelta d
 
 La strategia di sicurezza segue direttamente la stratificazione a tre layer definita nel data warehouse `HEALTHCARE_DW`.
 
-- *Layer RAW (staging / mirror)*: contiene i dati così come arrivano dalle sorgenti, inclusa la componente più ricca di PII nella tabella `RAW.PAZIENTI` (es. `CODICE_FISCALE`, contatti, indirizzo, email, telefono). Per questo motivo l'accesso a `RAW` è ristretto e destinato esclusivamente a chi gestisce l'ingestione e le trasformazioni.
+- *Layer RAW (staging / mirror)*: contiene i dati così come arrivano dalle sorgenti, inclusa la componente più ricca di PII nella tabella 
+`RAW.PAZIENTI` (es. `CODICE_FISCALE`, contatti, indirizzo, email, telefono). Per questo motivo l'accesso a `RAW` è ristretto e destinato 
+esclusivamente a chi gestisce l'ingestione e le trasformazioni.
 
-- *Layer CURATED (standardizzazione e qualità)*: rappresenta il punto in cui applico le regole di qualità e le relazioni (PK/FK *informational*, non enforced). Proprio perché l'integrità è demandata alla pipeline ELT, limito i privilegi di scrittura a ruoli tecnici: in questo modo riduco il rischio di scritture manuali non tracciate che potrebbero introdurre incoerenze rispetto alle validazioni (es. orfani o duplicati).
+- *Layer CURATED (standardizzazione e qualità)*: rappresenta il punto in cui applico le regole di qualità e le relazioni (PK/FK *informational*, non enforced). 
+Essendo che l'integrità è demandata alla pipeline ELT, limito i privilegi di scrittura a ruoli tecnici: 
+in questo modo riduco il rischio di scritture manuali non tracciate che potrebbero introdurre incoerenze rispetto alle validazioni.
 
-- *Layer ANALYTICS (consumo)*: ospita il modello dimensionale (`DIM_*`, `FACT_*`) progettato per BI. È il livello in cui operano gli utenti di business; di conseguenza, l'accesso per analisi avviene qui e non su `RAW`. Anche in `ANALYTICS` sono presenti attributi che possono costituire PII o quasi-identificatori nella `DIM_PAZIENTE` (es. `DATA_NASCITA`, `CITTA`), quindi il consumo viene protetto con *masking policy* applicate a colonne specifiche.
+- *Layer ANALYTICS (consumo)*: ospita il modello dimensionale (`DIM_*`, `FACT_*`) progettato per BI. È il livello in cui operano gli utenti di business; 
+di conseguenza, l'accesso per analisi avviene qui e non su `RAW`. Anche in `ANALYTICS` sono presenti attributi che possono costituire PII o quasi-identificatori 
+nella `DIM_PAZIENTE` (es. `DATA_NASCITA`, `CITTA`), quindi il consumo viene protetto con *masking policy* applicate a colonne specifiche.
 
 == 7.2 Strategia RBAC su Snowflake
 
@@ -26,7 +32,8 @@ Ruoli definiti:
 
 - `ROLE_DATA_ENGINEER`: ingestione e trasformazioni (scrittura su `RAW`/`CURATED`, pubblicazione su `ANALYTICS`).
 - `ROLE_DATA_ANALYST`: consultazione e analisi su `ANALYTICS` (e, dove necessario, `CURATED` in sola lettura).
-- `ROLE_COMPLIANCE_OFFICER`: verifica e auditing; *visibilità completa ai fini di controllo* (lettura), inclusa la visibilità non mascherata degli attributi PII dove previsto dalle policy, senza privilegi di scrittura.
+- `ROLE_COMPLIANCE_OFFICER`: verifica e auditing; *visibilità completa ai fini di controllo* (lettura), 
+inclusa la visibilità non mascherata degli attributi PII dove previsto dalle policy, senza privilegi di scrittura.
 
 _DDL Snowflake: creazione ruoli_
 
@@ -41,7 +48,8 @@ _DDL Snowflake: creazione ruoli_
 === Gerarchia dei ruoli
 
 Per semplificare la gestione e garantire che chi controlla abbia sempre almeno la stessa visibilità di chi analizza, ho stabilito una gerarchia esplicita.
-Il `ROLE_COMPLIANCE_OFFICER` eredita il `ROLE_DATA_ANALYST`: questo assicura che qualsiasi oggetto esposto per l'analisi sia automaticamente visibile (e auditabile) dal Compliance Officer senza necessità di doppi privilegi.
+Il `ROLE_COMPLIANCE_OFFICER` eredita il `ROLE_DATA_ANALYST`: questo assicura che qualsiasi oggetto esposto per l'analisi sia automaticamente visibile 
+(e auditabile) dal Compliance Officer senza necessità di doppi privilegi.
 
 	```sql
 	USE ROLE SECURITYADMIN;
@@ -114,7 +122,7 @@ _Nota_: l'assenza di `GRANT USAGE` sullo schema `RAW` per `ROLE_DATA_ANALYST` im
 
 === CURATED
 
-Nel layer `CURATED` il `ROLE_DATA_ENGINEER` deve poter effettuare trasformazioni e pubblicazioni (tipicamente tramite `INSERT` e operazioni di upsert/merge). Il `ROLE_DATA_ANALYST` accede in sola lettura, quando necessario, per verifiche o analisi intermedie.
+Nel layer `CURATED` il `ROLE_DATA_ENGINEER` deve poter effettuare trasformazioni e pubblicazioni (tipicamente tramite `INSERT` e operazioni di upsert/merge). Il `ROLE_DATA_ANALYST` accede in sola lettura per verifiche o analisi intermedie sulla qualità dei dati (inclusa la revisione delle anomalie nelle tabelle di quarantena).
 
 	```sql
 	USE ROLE SECURITYADMIN;
@@ -122,18 +130,19 @@ Nel layer `CURATED` il `ROLE_DATA_ENGINEER` deve poter effettuare trasformazioni
 	GRANT USAGE ON SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ENGINEER;
 	GRANT USAGE ON SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ANALYST;
 
-	-- Data Engineer: trasformazioni e caricamenti
+	-- Data Engineer: trasformazioni, caricamenti e gestione quarantena (R/W)
 	GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ENGINEER;
 	GRANT SELECT, INSERT, UPDATE, DELETE ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ENGINEER;
 
-	-- Analyst: sola lettura (ereditata anche da Compliance)
+	-- Analyst: sola lettura per audit e data quality verify (ereditata anche da Compliance)
 	GRANT SELECT ON ALL TABLES IN SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ANALYST;
 	GRANT SELECT ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.CURATED TO ROLE ROLE_DATA_ANALYST;
 	```
 
 === ANALYTICS
 
-`ANALYTICS` è il layer di consumo: il `ROLE_DATA_ANALYST` lavora qui in sola lettura sul modello dimensionale (`DIM_*`, `FACT_*` come `DIM_PAZIENTE`, `FACT_RICOVERI`). Il `ROLE_COMPLIANCE_OFFICER` dispone di visibilità completa per controlli e verifiche.
+`ANALYTICS` è il layer di consumo: il `ROLE_DATA_ANALYST` lavora qui in sola lettura sul modello dimensionale (`DIM_*`, `FACT_*` come `DIM_PAZIENTE`, `FACT_RICOVERI`). 
+Il `ROLE_COMPLIANCE_OFFICER` dispone di visibilità completa per controlli e verifiche.
 
 	```sql
 	USE ROLE SECURITYADMIN;
@@ -150,31 +159,80 @@ Nel layer `CURATED` il `ROLE_DATA_ENGINEER` deve poter effettuare trasformazioni
 	GRANT SELECT, INSERT, UPDATE, DELETE ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.ANALYTICS TO ROLE ROLE_DATA_ENGINEER;
 	```
 
-== 7.4 Protezione dei dati sensibili (PII)
+=== PIPELINE
 
-Nel modello dimensionale ho ridotto la quantità di attributi anagrafici esposti, ma `DIM_PAZIENTE` contiene comunque campi che possono consentire re-identificazione o profilazione, tra cui `CITTA` e `DATA_NASCITA`.
-Per rendere la protezione *applicativa e verificabile*, utilizzo *Masking Policy* Snowflake applicate a colonne mirate, differenziando la visibilità in base al ruolo effettivo (`CURRENT_ROLE()`).
-
-_Esempio: masking di `DIM_PAZIENTE.CITTA` con visibilità piena solo per Compliance (e ruolo tecnico)_
+Lo schema `PIPELINE` ospita la logica di orchestrazione (Stored Procedures, Task, Streams). 
+Trattandosi di uno schema puramente tecnico e operativo, l'accesso è strettamente riservato al Data Engineer, con visibilità di audit per il Compliance Officer.
 
 	```sql
-	-- Usecase: creazione oggetto di policy (richiede privilegi globali o ACCOUNTADMIN)
+	USE ROLE SECURITYADMIN;
+
+	GRANT USAGE ON SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+	GRANT USAGE ON SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_COMPLIANCE_OFFICER;
+
+	-- Data Engineer: Creazione e gestione oggetti di orchestrazione
+	GRANT CREATE TABLE, CREATE VIEW, CREATE PROCEDURE, CREATE TASK, CREATE STREAM 
+		ON SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+
+	-- Privilegi operativi su oggetti di supporto (es. tabelle di log)
+	GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+	GRANT SELECT, INSERT, UPDATE, DELETE ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+
+	-- Privilegi per esecuzione e monitoraggio flussi
+	GRANT OPERATE, MONITOR ON ALL TASKS IN SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+	GRANT OPERATE, MONITOR ON FUTURE TASKS IN SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+	GRANT CALL ON ALL PROCEDURES IN SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+	GRANT CALL ON FUTURE PROCEDURES IN SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_DATA_ENGINEER;
+
+	-- Compliance: sola lettura per audit
+	GRANT SELECT ON ALL TABLES IN SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_COMPLIANCE_OFFICER;
+	GRANT SELECT ON FUTURE TABLES IN SCHEMA HEALTHCARE_DW.PIPELINE TO ROLE ROLE_COMPLIANCE_OFFICER;
+	```
+
+== 7.4 Protezione dei dati sensibili (PII)
+
+L'analisi del modello dati conferma che gli identificatori diretti (`NOME`, `COGNOME`, `CODICE_FISCALE`, `EMAIL`, `TELEFONO`) sono stati strutturalmente esclusi dal layer `ANALYTICS` (Privacy by Design).
+Tuttavia, la tabella `DIM_PAZIENTE` mantiene attributi *quasi-identificatori* che richiedono protezione specifica come identificato nel modello dati (`COMMENT 'PII'`):
+- `CITTA`: rischio di profilazione geografica (granularità troppo fine).
+- `DATA_NASCITA`: rischio di re-identificazione se incrociata con altre fonti.
+
+Per mitigare questi rischi residui senza bloccare l'accesso al dato aggregato, utilizzo le *Masking Policy* dinamiche di Snowflake.
+La policy viene applicata a livello di colonna e valuta il ruolo a runtime:
+- *Analisti (`ROLE_DATA_ANALYST`)*: vedono il dato oscurato (`***` per stringhe, `1900-01-01` per date) in modo da proteggere la privacy individuale mantenendo la struttura tabellare.
+- *Compliance & Tecnici*: vedono il dato in chiaro per validazione e auditing.
+
+_DDL: Definizione e applicazione delle Masking Policy PII_
+
+	```sql
 	USE ROLE ACCOUNTADMIN;
 	USE DATABASE HEALTHCARE_DW;
 	USE SCHEMA HEALTHCARE_DW.ANALYTICS;
 
-	CREATE OR REPLACE MASKING POLICY MP_DIM_PAZIENTE_CITTA AS (val STRING)
+	-- 1. Policy Generica per stringhe sensibili (es. Città)
+	CREATE OR REPLACE MASKING POLICY MP_PII_STRING AS (val STRING)
 	RETURNS STRING ->
 		CASE
 			WHEN val IS NULL THEN NULL
 			WHEN CURRENT_ROLE() IN ('ROLE_COMPLIANCE_OFFICER', 'ROLE_DATA_ENGINEER', 'ACCOUNTADMIN') THEN val
-			ELSE '***'
+			ELSE '*** MASKED ***'
 		END;
 
-	-- Applicazione della policy alla colonna
-	ALTER TABLE DIM_PAZIENTE
-		MODIFY COLUMN CITTA
-		SET MASKING POLICY MP_DIM_PAZIENTE_CITTA;
+	-- 2. Policy per date di nascita (Quasi-Identifier)
+	-- Si usa una data fittizia standard per mantenere il tipo di dato DATE valido ed evitare rotture nei tool di BI
+	CREATE OR REPLACE MASKING POLICY MP_PII_DATE AS (val DATE)
+	RETURNS DATE ->
+		CASE
+			WHEN val IS NULL THEN NULL
+			WHEN CURRENT_ROLE() IN ('ROLE_COMPLIANCE_OFFICER', 'ROLE_DATA_ENGINEER', 'ACCOUNTADMIN') THEN val
+			ELSE TO_DATE('1900-01-01') -- Sentinel value per utenti non privilegiati
+		END;
+
+	-- Applicazione alle colonne target in DIM_PAZIENTE (Uniche colonne PII esposte in Analytics)
+	ALTER TABLE DIM_PAZIENTE MODIFY COLUMN CITTA 
+		SET MASKING POLICY MP_PII_STRING;
+		
+	ALTER TABLE DIM_PAZIENTE MODIFY COLUMN DATA_NASCITA 
+		SET MASKING POLICY MP_PII_DATE;
 	```
 
 Questo approccio è coerente con la separazione dei compiti:
@@ -192,21 +250,3 @@ L'intero impianto RBAC è costruito secondo *least privilege* e riflette lo stes
 - *consumo controllato*: l'accesso degli analisti è indirizzato verso `ANALYTICS` (star schema) e protetto da masking su attributi sensibili
 
 In sintesi, il modello dati e il modello di sicurezza sono stati progettati congiuntamente: poiché in Snowflake i vincoli PK/FK sono *informational* e l'integrità referenziale è garantita dalla pipeline ELT (ordine di caricamento e validazioni), la scrittura manuale viene limitata ai soli ruoli tecnici. L'esposizione verso gli utenti di business avviene invece sul solo layer `ANALYTICS`, dove il dato è già normalizzato per il consumo e gli attributi sensibili della `DIM_PAZIENTE` sono protetti con masking policy.
-
-== 7.6 Auditabilità e tracciamento accessi
-
-Per rendere il controllo effettivo (e non solo dichiarativo), Snowflake mette a disposizione viste di audit a livello account interrogabili tramite lo schema `SNOWFLAKE.ACCOUNT_USAGE`.
-In particolare, `QUERY_HISTORY` consente di ricostruire *chi* ha eseguito *quale query* e *quando*, mentre `ACCESS_HISTORY` consente di analizzare l'accesso effettivo agli oggetti/colonne, supportando la verifica degli accessi su dati sensibili.
-
-	```sql
-	-- Esempi di interrogazione delle viste di audit (account-level)
-	SELECT QUERY_ID, USER_NAME, ROLE_NAME, WAREHOUSE_NAME, START_TIME
-	FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
-	ORDER BY START_TIME DESC;
-
-	SELECT QUERY_ID, USER_NAME, ROLE_NAME, QUERY_START_TIME
-	FROM SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY
-	ORDER BY QUERY_START_TIME DESC;
-	```
-
-Questa auditabilità completa il modello RBAC e il masking: oltre a *prevenire* accessi non necessari (least privilege), consente di *monitorare* e *ricostruire* gli accessi in caso di verifiche interne o controlli di conformità.

@@ -3,7 +3,8 @@
 == Sintesi del lavoro svolto
 
 In questa sezione conclusiva riassumo il percorso progettuale che ho portato a termine.
-Partendo dalla generazione di un dataset sintetico verosimile, ho attraversato le fasi di analisi dei requisiti e design architetturale, fino ad arrivare alla definizione dettagliata del modello dati su Snowflake e all'implementazione delle politiche di sicurezza.
+Partendo dalla generazione di un dataset sintetico verosimile, ho attraversato le fasi di analisi dei requisiti e design architetturale, 
+fino ad arrivare alla definizione dettagliata del modello dati su Snowflake e all'implementazione delle politiche di sicurezza.
 
 Ogni step è stato guidato dall'obiettivo di modernizzare la gestione dei dati clinici, rispondendo alle esigenze di consolidamento e analisi espresse inizialmente.
 

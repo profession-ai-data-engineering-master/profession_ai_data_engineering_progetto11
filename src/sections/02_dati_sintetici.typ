@@ -2,20 +2,29 @@
 
 == Motivazione e approccio
 
-Nel contesto di questo progetto, l'utilizzo di dati sanitari reali comporterebbe significative complessità legali ed etiche, in particolare legate al rispetto della privacy dei pazienti e alla conformità con normative rigorose come il GDPR. Per ovviare a queste problematiche e garantire la massima flessibilità nella fase di sviluppo e test, ho optato per la generazione di un dataset interamente sintetico.
+Nel contesto di questo progetto, l'utilizzo di dati sanitari reali comporterebbe significative complessità legali ed etiche, 
+in particolare legate al rispetto della privacy dei pazienti e alla conformità con normative rigorose come il GDPR. 
+Per ovviare a queste problematiche e garantire la massima flessibilità nella fase di sviluppo e test, 
+ho optato per la generazione di un dataset interamente sintetico.
 
-Questa scelta mi ha permesso di disporre di una base dati verosimile e strutturata, necessaria per convalidare l'architettura Snowflake e le pipeline di ingestione, eliminando alla radice il rischio di esporre informazioni sensibili. La fase di generazione dei dati costituisce quindi il punto di partenza fondamentale dell'intero progetto, definendo il perimetro informativo su cui si baseranno tutte le analisi successive.
+Questa scelta mi ha permesso di disporre di una base dati verosimile e strutturata, necessaria per convalidare l'architettura Snowflake e le pipeline di ingestione, 
+eliminando alla radice il rischio di esporre informazioni sensibili. La fase di generazione dei dati costituisce quindi il punto di partenza fondamentale dell'intero progetto, 
+definendo il perimetro informativo su cui si baseranno tutte le analisi successive.
 
 == Sorgente: healthdata-synthetic-generator e SDV
 
-Per produrre il dataset, ho utilizzato un progetto esterno denominato "healthdata-synthetic-generator", basato sulla libreria Python *SDV (Synthetic Data Vault)*. SDV è uno strumento avanzato che consente di modellare dataset multi-tabella, apprendendo le distribuzioni statistiche e le relazioni dai dati originali (o da schemi definiti) per generare nuovi record che mantengono la coerenza referenziale e le proprietà statistiche.
+Per produrre il dataset, ho utilizzato un progetto esterno denominato "healthdata-synthetic-generator", basato sulla libreria Python *SDV (Synthetic Data Vault)*. 
+SDV è uno strumento avanzato che consente di modellare dataset multi-tabella, apprendendo le distribuzioni statistiche e le relazioni dai dati originali (o da schemi definiti) 
+per generare nuovi record che mantengono la coerenza referenziale e le proprietà statistiche.
 
-Il generatore è stato configurato per rispettare regole di business specifiche e vincoli di integrità. Il codice sorgente e la documentazione tecnica del generatore sono disponibili al seguente link:
+Il generatore è stato configurato per rispettare regole di business specifiche e vincoli di integrità. 
+Il codice sorgente e la documentazione tecnica del generatore sono disponibili al seguente link:
 #link("https://github.com/fedevita/healthdata-synthetic-generator.git")[healthdata-synthetic-generator]
 
 == Organizzazione per domini
 
-Ho strutturato il dataset organizzandolo in tre domini logici distinti, per simulare la natura eterogenea dei sistemi informativi ospedalieri reali. Questa suddivisione riflette la necessità di consolidare fonti diverse all'interno del Data Warehouse:
+Ho strutturato il dataset organizzandolo in tre domini logici distinti, per simulare la natura eterogenea dei sistemi informativi ospedalieri reali. 
+Questa suddivisione riflette la necessità di consolidare fonti diverse all'interno del Data Warehouse:
 
 - *EHR (Electronic Health Record)*: Contiene i dati clinici fondamentali, inclusi i dettagli sui pazienti, i ricoveri ospedalieri e le diagnosi associate.
 - *ERP (Enterprise Resource Planning)*: Raccoglie i dati operativi e organizzativi, come la gestione dei reparti, l'anagrafica del personale e i turni di assegnazione.
@@ -81,7 +90,9 @@ Registro delle misurazioni vitali sparse effettuate dai dispositivi.
 - *frequenza_respiratoria*: Atti respiratori al minuto (intero).
 - *glicemia_mg_dl*: Glicemia in mg/dL (intero).
 
-_Nota tecnica:_ I campi dei parametri vitali sono popolati condizionalmente in base al *tipo di dispositivo* associato. Ad esempio, un Termometro valorizzerà esclusivamente il campo `temperatura_c`, lasciando gli altri a `NULL`. Questa scelta rende il dataset realistico e introduce valori mancanti (missing values) che dovranno essere gestiti nelle fasi di analisi.
+_Nota tecnica:_ I campi dei parametri vitali sono popolati condizionalmente in base al *tipo di dispositivo* associato. 
+Ad esempio, un Termometro valorizzerà esclusivamente il campo `temperatura_c`, lasciando gli altri a `NULL`. 
+Questa scelta rende il dataset realistico e introduce valori mancanti (missing values) che dovranno essere gestiti nelle fasi di analisi.
 
 === Dominio EHR
 
@@ -121,7 +132,8 @@ _Misure fisiche:_
 - *altezza_cm*: Altezza in cm.
 - *peso_kg*: Peso in kg.
 
-_Nota sulla privacy:_ Diversi campi della tabella "pazienti" (in particolare contatti e indirizzi) costituiscono informazioni identificabili personalmente (PII). La gestione degli accessi e la protezione di questi dati verranno affrontate specificamente nelle sezioni relative alla sicurezza (RBAC e conformità GDPR).
+_Nota sulla privacy:_ Diversi campi della tabella "pazienti" (in particolare contatti e indirizzi) costituiscono informazioni identificabili personalmente (PII). 
+La gestione degli accessi e la protezione di questi dati verranno affrontate specificamente nelle sezioni relative alla sicurezza (RBAC e conformità GDPR).
 
 *7. Ricoveri ("ricoveri")*
 Storico delle ospedalizzazioni.
@@ -144,7 +156,8 @@ Dettaglio delle diagnosi associate ai ricoveri.
 
 == Relazioni e integrità referenziale
 
-La struttura del dataset si basa su solide relazioni gerarchiche che vengono applicate già nella pipeline di campionamento sintetico e i cui vincoli di integrità (chiavi esterne e domini) sono stati validati:
+La struttura del dataset si basa su solide relazioni gerarchiche che vengono applicate già nella pipeline di campionamento sintetico e 
+i cui vincoli di integrità (chiavi esterne e domini) sono stati validati:
 
 - `reparti.id_reparto` -> `assegnazioni.id_reparto`
 - `reparti.id_reparto` -> `dispositivi.id_reparto`
@@ -160,7 +173,8 @@ Queste relazioni sono il prerequisito fondamentale per il modello Snowflake, per
 == Ruoli, permessi e predisposizione per integrazione Snowflake
 
 In questa fase, ho impostato l'infrastruttura di storage cloud su Amazon S3 e definito il modello di sicurezza per la futura integrazione con Snowflake.
-Ho adottato un approccio architetturale basato su principi di sicurezza enterprise: utilizzo di un bucket completamente privato, autenticazione tramite ruolo IAM (senza credenziali statiche) e applicazione rigorosa del principio del *least privilege*.
+Ho adottato un approccio architetturale basato su principi di sicurezza enterprise: utilizzo di un bucket completamente privato, 
+autenticazione tramite ruolo IAM (senza credenziali statiche) e applicazione rigorosa del principio del *least privilege*.
 
 Questa configurazione garantisce che la separazione tra lo strato di storage (Data Lake) e lo strato di computazione (Data Warehouse) avvenga in modo sicuro e controllato.
 
@@ -168,12 +182,6 @@ Questa configurazione garantisce che la separazione tra lo strato di storage (Da
 
 Ho creato un bucket S3 dedicato nella regione AWS *`eu-central-1`* (Francoforte), denominandolo esplicitamente *`healthcare-data-prod-eu`*.
 Il bucket è configurato con il blocco totale dell'accesso pubblico ("Block Public Access" attivo).
-
-// Screenshot suggerito: 01_s3_bucket_creazione.png
-#figure(
-  image("../assets/01_s3_bucket_creazione.png", width: 80%),
-  caption: "Bucket S3 `healthcare-data-prod-eu` creato nella regione eu-central-1"
-)
 
 Ho strutturato i dati internamente utilizzando una gerarchia di cartelle (prefix) che riflette l'organizzazione logica del dataset, facilitando la futura ingestione automatizzata:
 
@@ -199,22 +207,10 @@ healthcare-data-prod-eu/
 
 Ogni directory foglia (es. `pazienti/`) contiene esclusivamente i file dati (Parquet) relativi a quella specifica entità, garantendo omogeneità di schema.
 
-// Screenshot suggerito: 03_s3_bucket_struttura_prefix.png
-#figure(
-    image("../assets/03_s3_bucket_struttura_prefix.png", width: 80%),
-  caption: "Struttura gerarchica dei prefix S3"
-)
-
 === Ruolo IAM dedicato a Snowflake
 
 Per abilitare l'accesso sicuro da parte di Snowflake, ho creato un ruolo IAM (Identity and Access Management) dedicato nel mio account AWS, denominato *`snowflake_s3_readonly_role`*.
 Questo ruolo è stato progettato per essere "assumibile" da un'entità esterna fidata (il servizio Snowflake) e non possiede permessi diretti di login o chiavi di accesso.
-
-// Screenshot suggerito: 06_iam_role_snowflake_readonly.png
-#figure(
-  image("../assets/06_iam_role_snowflake_readonly.png", width: 80%),
-  caption: "Ruolo IAM `snowflake_s3_readonly_role` configurato"
-)
 
 === Policy IAM (Least Privilege)
 
@@ -247,12 +243,6 @@ Ecco la definizione della policy applicata:
 
 Questa configurazione impedisce qualsiasi operazione di scrittura o cancellazione e nega l'accesso a qualsiasi altra risorsa AWS non esplicitamente indicata.
 
-// Screenshot suggerito: 05_iam_policy_s3_least_privilege.png
-#figure(
-  image("../assets/05_iam_policy_s3_least_privilege.png", width: 80%),
-  caption: "Policy IAM `snowflake_s3_raw_read_policy`"
-)
-
 === Trust policy del ruolo IAM (predisposta con placeholder)
 
 Per completare la configurazione di sicurezza, il ruolo IAM necessita di una "Trust Relationship" che autorizzi specificamente l'account Snowflake ad assumerlo.
@@ -281,20 +271,5 @@ Poiché l'account Snowflake non è ancora stato collegato, ho predisposto la Tru
   caption: "Trust Policy del ruolo IAM (con placeholder)"
 )
 
-I valori `<SNOWFLAKE_IAM_USER_ARN>` (l'identità utente IAM di Snowflake) e `<SNOWFLAKE_EXTERNAL_ID>` (un identificativo univoco per la sicurezza cross-account) verranno recuperati eseguendo il comando `DESC INTEGRATION` su Snowflake e aggiornati in questa policy in un secondo momento.
-
-=== Oggetti Snowflake predisposti
-
-In vista dell'integrazione, ho già definito la nomenclatura standard per gli oggetti Snowflake che andrò a creare:
-
-1.  *Storage Integration*: *`s3_int_healthcare_data`*
-    Sarà l'oggetto a livello di account che memorizzerà l'ARN del ruolo IAM (`arn:aws:iam::...:role/snowflake_s3_readonly_role`) e gestirà l'autenticazione.
-
-2.  *External Stage*: *`stage_healthcare_raw`*
-    Sarà l'oggetto a livello di database che punterà fisicamente al bucket S3 (`s3://healthcare-data-prod-eu/snowflake/raw/`) utilizzando l'integrazione di storage.
-
-Avere questi riferimenti già definiti mi permette di procedere con una configurazione AWS coerente e pronta all'uso ("Snowflake-ready"), minimizzando i tempi di setup quando l'ambiente Data Warehouse sarà disponibile.
-
-== Collegamento con le sezioni successive
-
-Il dataset qui definito e generato costituisce la base su cui si poggia l'intera architettura descritta nel report. I dati descritti in questo dizionario verranno utilizzati nelle prossime sezioni per definire il modello dimensionale (Fact e Dimension tables), per implementare le politiche di accesso basate sui ruoli (RBAC) e per dimostrare la conformità alle normative sulla protezione dei dati (GDPR).
+I valori `<SNOWFLAKE_IAM_USER_ARN>` (l'identità utente IAM di Snowflake) e `<SNOWFLAKE_EXTERNAL_ID>` (un identificativo univoco per la sicurezza cross-account) 
+verranno recuperati eseguendo il comando `DESC INTEGRATION` su Snowflake e aggiornati in questa policy in un secondo momento.
