@@ -386,3 +386,9 @@ Riepilogo finale del flusso dati dai file sorgente fino al modello analitico.
 In questa sezione ho definito l'architettura informativa su Snowflake, ora allineata e coerente con il dizionario dati della Sezione 3.
 In particolare, ho mantenuto le chiavi naturali come PK lungo i layer e ho preservato la precisione temporale nelle fact (`TIMESTAMP_NTZ`), evitando conversioni implicite a `DATE`.
 `DIM_TEMPO` resta disponibile come calendario giornaliero per le analisi, agganciabile in query tramite `CAST(... AS DATE)` o `DATE_TRUNC('DAY', ...)`.
+
+// Screenshot suggerito: 06_sf_ui_database_structure_with_tables.png
+#figure(
+  image("../assets/06_sf_ui_database_structure_with_tables.png", width: 30%),
+  caption: "Screenshot: vista UI degli schemi e delle tabelle nel database HEALTHCARE_DW"
+)
