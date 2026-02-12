@@ -25,8 +25,6 @@ Il layer `RAW` funge da area di staging. Le tabelle qui definite rispecchiano la
 
 Tutti i tipi di dato sono stati mappati dal dizionario dati ai tipi nativi di Snowflake (`VARCHAR`, `DATE`, `TIMESTAMP_NTZ`, `NUMBER`, `FLOAT`).
 
-// Screenshot suggerito: 08_sf_raw_tables.png
-
 ```sql
 USE DATABASE HEALTHCARE_DW;
 USE SCHEMA HEALTHCARE_DW.RAW;
