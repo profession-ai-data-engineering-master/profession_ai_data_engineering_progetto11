@@ -176,7 +176,7 @@ Il reload degli stessi file può avvenire solo in casi operativi espliciti, ad e
 - file effettivamente cambiato (nuovo oggetto/versione su S3) e considerato come “nuovo” per la history;
 - cambio di target (un'altra tabella) o cambio del path/pattern dello stage.
 
-Questa proprietà rende *difendibile* l'idempotenza **file-level** del layer `RAW` come comportamento operativo, ma va descritta in modo non assoluto: vale **a parità di tabella target**, **path/pattern dello stage** e **oggetto file** (file object) tracciato nella load history.
+Questa proprietà rende *difendibile* l'idempotenza *file-level* del layer `RAW` come comportamento operativo, ma va descritta in modo non assoluto: vale *a parità di tabella target*, *path/pattern dello stage* e *oggetto file* (file object) tracciato nella load history.
 In pratica `RAW` funziona come *landing zone append-only* a livello file: `COPY INTO` tende a non ricaricare file già visti dalla history della specifica tabella, ma lo stesso contenuto può essere considerato “nuovo” (e quindi ricaricato) se:
 
 - si usa `FORCE = TRUE` nel `COPY INTO`;
@@ -277,12 +277,12 @@ ORDER BY N_LOADS DESC, LAST_LOAD_TIME DESC;
 
 ==== Natura del layer RAW
 
-Il layer `RAW` è una *landing zone* tecnica e **append-only**:
+Il layer `RAW` è una *landing zone* tecnica e *append-only*:
 
 - non applica deduplicazione *row-level*;
 - può contenere più record con la stessa business key (es. stesso `ID_*`) provenienti da file diversi e/o da run diversi;
 - rappresenta lo *storico tecnico di ingestione* (mirror dei file caricati), non uno stato “pulito” del dominio;
-- la deduplica deterministica e l'idempotenza logica sulle business key sono applicate **solo** in `CURATED` (e propagate in `ANALYTICS`).
+- la deduplica deterministica e l'idempotenza logica sulle business key sono applicate *solo* in `CURATED` (e propagate in `ANALYTICS`).
 
 === 2) CURATED: sp_transform_curated() (quarantena + MERGE, idempotente)
 
@@ -825,18 +825,18 @@ FROM HEALTHCARE_DW.CURATED.PARAMETRI_VITALI_QUARANTENA;
 
 ==== Riconciliazione logica del layer CURATED
 
-La riconciliazione basata su `RAW = CURATED + QUARANTENA` è *fragile* perché ignora un insieme previsto dal design: i record **validi ma duplicati** sulla business key (`ID_RICOVERO`) che vengono *scartati deterministamente* dalla dedup (`ROW_NUMBER() ... QUALIFY = 1`).
+La riconciliazione basata su `RAW = CURATED + QUARANTENA` è *fragile* perché ignora un insieme previsto dal design: i record *validi ma duplicati* sulla business key (`ID_RICOVERO`) che vengono *scartati deterministamente* dalla dedup (`ROW_NUMBER() ... QUALIFY = 1`).
 In altre parole, un `delta_should_be_zero` può risultare diverso da zero anche quando la pipeline funziona correttamente.
 
 La metrica corretta separa tre insiemi logici:
 
-- **INVALID_RAW_RICOVERI**: PK/FK null e/o FK orfane → confluiscono in `CURATED.RICOVERI_QUARANTENA` (snapshot deduplicata).
-- **VALID_CANDIDATES_RAW_RICOVERI**: record RAW che passano i check PK/FK e join verso `CURATED.PAZIENTI` e `CURATED.REPARTI` → candidati al `MERGE`.
-- **DEDUP_DROPPED_VALID_RICOVERI**: record validi scartati perché non sono la riga `rn = 1` per lo stesso `ID_RICOVERO`.
+- *INVALID_RAW_RICOVERI*: PK/FK null e/o FK orfane → confluiscono in `CURATED.RICOVERI_QUARANTENA` (snapshot deduplicata).
+- *VALID_CANDIDATES_RAW_RICOVERI*: record RAW che passano i check PK/FK e join verso `CURATED.PAZIENTI` e `CURATED.REPARTI` → candidati al `MERGE`.
+- *DEDUP_DROPPED_VALID_RICOVERI*: record validi scartati perché non sono la riga `rn = 1` per lo stesso `ID_RICOVERO`.
 
 Di conseguenza, per i `RICOVERI` vale la scomposizione difendibile:
 
-`RAW (invalidi) → QUARANTENA`  **e**  `RAW (validi) → CURATED + scartati da dedup`.
+`RAW (invalidi) → QUARANTENA`  *e*  `RAW (validi) → CURATED + scartati da dedup`.
 
 *Evidenza 1: scomposizione insiemi (conteggi) + coerenza con snapshot quarantena*
 
@@ -1479,7 +1479,7 @@ ORDER BY SCHEDULED_TIME DESC;
 
 === Gestione operativa errori e rerun controllato
 
-- Se `task_load_raw` fallisce, i task downstream (`task_transform_curated`, `task_publish_analytics`) **non** vengono eseguiti, perché la catena è vincolata da `AFTER`.
+- Se `task_load_raw` fallisce, i task downstream (`task_transform_curated`, `task_publish_analytics`) *non* vengono eseguiti, perché la catena è vincolata da `AFTER`.
 - Il rerun controllato avviene rieseguendo il *root task* con `EXECUTE TASK` (la catena riparte dal punto iniziale previsto).
 - `TASK_HISTORY` espone stato e diagnostica operativa (`STATE`, `ERROR_MESSAGE`, `QUERY_ID`, tempi), utili per troubleshooting e per evidenze a screenshot.
 
