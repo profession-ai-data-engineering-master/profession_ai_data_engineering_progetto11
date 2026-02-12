@@ -27,6 +27,11 @@ SHOW DATABASES LIKE 'HEALTHCARE_DW';
 )
 
 // Screenshot suggerito: 01_sf_database_creato.png
+#figure(
+  image("../assets/01_sf_database_creato.png", width: 80%),
+  caption: "Screenshot: database HEALTHCARE_DW creato (UI/risultato SHOW DATABASES)"
+)
+
 
 Per assicurarmi che tutti i comandi successivi vengano eseguiti nel contesto corretto, ho impostato il database attivo:
 
@@ -66,8 +71,17 @@ SHOW SCHEMAS IN DATABASE HEALTHCARE_DW;
 )
 
 // Screenshot suggerito: 02_sf_schemas_creati.png
+#figure(
+  image("../assets/02_sf_schemas_creati.png", width: 80%),
+  caption: "Screenshot: schemi RAW/CURATED/ANALYTICS creati (SHOW SCHEMAS)"
+)
+
 
 // Screenshot suggerito: 06_sf_ui_database_structure.png (Vista grafica Database -> Schemas)
+#figure(
+  image("../assets/06_sf_ui_database_structure.png", width: 80%),
+  caption: "Screenshot: struttura del database (UI Snowflake: Database → Schemas)"
+)
 
 Per impostare il contesto di lavoro per le operazioni successive, come la creazione delle tabelle nel layer RAW, ho selezionato lo schema di default:
 
@@ -79,6 +93,10 @@ USE SCHEMA HEALTHCARE_DW.RAW;
 )
 
 // Screenshot suggerito: 07_sf_use_schema_raw.png
+#figure(
+  image("../assets/07_sf_use_schema_raw.png", width: 80%),
+  caption: "Screenshot: selezione dello schema attivo HEALTHCARE_DW.RAW (USE SCHEMA)"
+)
 
 == Configurazione delle risorse di calcolo (Virtual Warehouse)
 
@@ -111,6 +129,10 @@ SHOW WAREHOUSES LIKE 'WH_INGEST';
 )
 
 // Screenshot suggerito: 03_sf_warehouse_creato.png
+#figure(
+  image("../assets/03_sf_warehouse_creato.png", width: 80%),
+  caption: "Screenshot: warehouse WH_INGEST creato (SHOW WAREHOUSES)"
+)
 
 Per attivare questo warehouse per la sessione corrente, utilizzo il comando:
 
@@ -137,6 +159,10 @@ CREATE WAREHOUSE WH_OPERATIONS
 )
 
 // Screenshot suggerito: 04_sf_wh_operations.png
+#figure(
+  image("../assets/04_sf_wh_operations.png", width: 80%),
+  caption: "Screenshot: warehouse WH_OPERATIONS creato (proprietà/risultato)"
+)
 
 Per utilizzarlo:
 
@@ -163,6 +189,10 @@ CREATE WAREHOUSE WH_ANALYTICS
 )
 
 // Screenshot suggerito: 05_sf_wh_analytics.png
+#figure(
+  image("../assets/05_sf_wh_analytics.png", width: 80%),
+  caption: "Screenshot: warehouse WH_ANALYTICS creato (proprietà/risultato)"
+)
 
 Per attivarlo prima delle query analitiche:
 
