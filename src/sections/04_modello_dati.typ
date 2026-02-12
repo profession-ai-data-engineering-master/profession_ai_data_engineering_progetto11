@@ -221,7 +221,7 @@ _DDL CURATED: Pazienti e Cartella Clinica_
   -- completamento relazioni circolari o dipendenti
   ALTER TABLE PARAMETRI_VITALI ADD CONSTRAINT FK_VIT_PAZ FOREIGN KEY (ID_PAZIENTE) REFERENCES PAZIENTI(ID_PAZIENTE);
   ```
-  
+
 === CURATED – Gestione Anomalie (Quarantena)
 
 Le strutture `*_QUARANTENA` vengono predisposte per ospitare i record che falliscono le validazioni di qualità o l'integrità referenziale durante l'esecuzione delle pipeline.
@@ -354,8 +354,8 @@ _DDL ANALYTICS: Fact Tables e Bridge_
 
 In questa sezione ho definito l'architettura informativa su Snowflake, ora allineata e coerente con il dizionario dati.
 
-// Screenshot suggerito: 06_sf_ui_database_structure_with_tables.png
+// Screenshot suggerito: sf_ui_database_structure_with_tables.png
 #figure(
-  image("../assets/06_sf_ui_database_structure_with_tables.png", width: 30%),
+  image("../assets/sf_ui_database_structure_with_tables.png", width: 30%),
   caption: "Screenshot: vista UI degli schemi e delle tabelle nel database HEALTHCARE_DW"
 )

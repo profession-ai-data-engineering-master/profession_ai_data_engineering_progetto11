@@ -79,7 +79,7 @@ La trust policy del ruolo IAM utilizza questi due valori per prevenire *confused
 			"Action": "sts:AssumeRole",
 			"Condition": {
 				"StringEquals": {
-					"sts:ExternalId": "FU94465_SFCRole=4_22v+nzVLdIFY690bbCyXzu0xi3g="
+					"sts:ExternalId": "FU94465_SFCRole=4_FkK6O3wDsb9s7e5Fjx0GUL5YOvs="
 				}
 			}
 		}
@@ -857,15 +857,27 @@ GRANT USAGE ON WAREHOUSE WH_INGEST TO ROLE ROLE_DATA_ENGINEER;
 GRANT USAGE ON WAREHOUSE WH_OPERATIONS TO ROLE ROLE_DATA_ENGINEER;
 GRANT USAGE ON WAREHOUSE WH_ANALYTICS TO ROLE ROLE_DATA_ENGINEER;
 
--- Execute procedure
-GRANT EXECUTE ON PROCEDURE HEALTHCARE_DW.PIPELINE.sp_load_raw() TO ROLE ROLE_DATA_ENGINEER;
-GRANT EXECUTE ON PROCEDURE HEALTHCARE_DW.PIPELINE.sp_transform_curated() TO ROLE ROLE_DATA_ENGINEER;
-GRANT EXECUTE ON PROCEDURE HEALTHCARE_DW.PIPELINE.sp_publish_analytics() TO ROLE ROLE_DATA_ENGINEER;
+-- Stored Procedures (USAGE, non EXECUTE)
+GRANT USAGE ON PROCEDURE HEALTHCARE_DW.PIPELINE.sp_load_raw()
+    TO ROLE ROLE_DATA_ENGINEER;
 
--- Operatività task
-GRANT OPERATE ON TASK HEALTHCARE_DW.PIPELINE.task_load_raw TO ROLE ROLE_DATA_ENGINEER;
-GRANT OPERATE ON TASK HEALTHCARE_DW.PIPELINE.task_transform_curated TO ROLE ROLE_DATA_ENGINEER;
-GRANT OPERATE ON TASK HEALTHCARE_DW.PIPELINE.task_publish_analytics TO ROLE ROLE_DATA_ENGINEER;
+GRANT USAGE ON PROCEDURE HEALTHCARE_DW.PIPELINE.sp_transform_curated()
+    TO ROLE ROLE_DATA_ENGINEER;
+
+GRANT USAGE ON PROCEDURE HEALTHCARE_DW.PIPELINE.sp_publish_analytics()
+    TO ROLE ROLE_DATA_ENGINEER;
+
+-- Task
+GRANT OPERATE ON TASK HEALTHCARE_DW.PIPELINE.task_load_raw
+    TO ROLE ROLE_DATA_ENGINEER;
+
+GRANT OPERATE ON TASK HEALTHCARE_DW.PIPELINE.task_transform_curated
+    TO ROLE ROLE_DATA_ENGINEER;
+
+GRANT OPERATE ON TASK HEALTHCARE_DW.PIPELINE.task_publish_analytics
+    TO ROLE ROLE_DATA_ENGINEER;
+
+GRANT EXECUTE TASK ON ACCOUNT TO ROLE ROLE_DATA_ENGINEER;
 ```
 
 === Ownership e delega operativa (EXECUTE AS OWNER)
@@ -877,7 +889,8 @@ GRANT OPERATE ON TASK HEALTHCARE_DW.PIPELINE.task_publish_analytics TO ROLE ROLE
 *Attivazione della catena e run end-to-end controllato (evidenza)*
 
 ```sql
-ALTER TASK HEALTHCARE_DW.PIPELINE.task_load_raw RESUME;
+USE ROLE ROLE_DATA_ENGINEER;
+ALTER TASK HEALTHCARE_DW.PIPELINE.task_load_raw SUSPEND;
 ALTER TASK HEALTHCARE_DW.PIPELINE.task_transform_curated RESUME;
 ALTER TASK HEALTHCARE_DW.PIPELINE.task_publish_analytics RESUME;
 
@@ -898,16 +911,17 @@ Per confermare il corretto funzionamento della pipeline, interrogo lo storico de
       COMPLETED_TIME, 
       TIMESTAMPDIFF('second', SCHEDULED_TIME, COMPLETED_TIME) as DURATION_SEC
   FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(
-      SCHEDULED_TIME_RANGE_START => DATEADD('hour', -4, CURRENT_TIMESTAMP())
+      SCHEDULED_TIME_RANGE_START => DATEADD('minute', -4, CURRENT_TIMESTAMP())
   ))
   WHERE DATABASE_NAME = 'HEALTHCARE_DW'
+  AND NAME IN ('TASK_LOAD_RAW','TASK_TRANSFORM_CURATED','TASK_PUBLISH_ANALYTICS')
   ORDER BY SCHEDULED_TIME DESC;
   ```,
   caption: "Query di verifica: stato di esecuzione della catena di task"
 )
 
-// Screenshot suggerito: 10_sf_task_history_success_chain.png
+// Screenshot suggerito: sf_task_history_success_chain.png
 #figure(
-  image("../assets/10_sf_task_history_success_chain.png", width: 90%),
+  image("../assets/sf_task_history_success_chain.png", width: 90%),
   caption: "Screenshot: evidenza dell'esecuzione a cascata (Load -> Transform -> Publish) completata con successo"
 )
