@@ -3,9 +3,9 @@
 == Obiettivo della validazione
 
 In questa fase finale, eseguo una serie di interrogazioni mirate per confermare tre aspetti fondamentali del progetto:
-1.  **Completezza**: i dati sono fluiti correttamente dal livello RAW al livello ANALYTICS.
-2.  **Qualità**: la logica di quarantena ha intercettato eventuali anomalie referenziali.
-3.  **Sicurezza**: le policy di mascheramento dinamico proteggono i dati sensibili in base al ruolo utente.
+1.  *Completezza*: i dati sono fluiti correttamente dal livello RAW al livello ANALYTICS.
+2.  *Qualità*: la logica di quarantena ha intercettato eventuali anomalie referenziali.
+3.  *Sicurezza*: le policy di mascheramento dinamico proteggono i dati sensibili in base al ruolo utente.
 
 I test vengono eseguiti impersonando i ruoli definiti nel modello di sicurezza (`ROLE_DATA_ENGINEER`, `ROLE_DATA_ANALYST`, `ROLE_COMPLIANCE_OFFICER`).
 
@@ -30,9 +30,9 @@ Utilizzando il ruolo tecnico, verifico la cardinalità delle tabelle lungo la pi
   caption: "Query di riconciliazione volumi tra i layer"
 )
 
-// Screenshot suggerito: 11_sf_results_layer_count.png
+// Screenshot suggerito: sf_results_layer_count.png
 #figure(
-  image("../assets/11_sf_results_layer_count.png", width: 80%),
+  image("../assets/sf_results_layer_count.png", width: 80%),
   caption: "Screenshot: output verifica volumi (nessuna perdita di dati)"
 )
 
@@ -56,9 +56,9 @@ Controllo se le tabelle di quarantena hanno catturato record che violano l'integ
   caption: "Monitoraggio della Data Quality (Quarantena)"
 )
 
-// Screenshot suggerito: 12_sf_results_quarantine_empty.png
+// Screenshot suggerito: sf_results_quarantine_empty.png
 #figure(
-  image("../assets/12_sf_results_quarantine_empty.png", width: 80%),
+  image("../assets/sf_results_quarantine_empty.png", width: 80%),
   caption: "Screenshot: output verifica quarantena (nessuna anomalia non gestita)"
 )
 
@@ -88,9 +88,9 @@ Simulo l'attività di un analista che interroga il Data Mart per estrarre insigh
   caption: "Analisi dimensionale: Ricoveri per Reparto"
 )
 
-// Screenshot suggerito: 13_sf_results_analytics_query.png
+// Screenshot suggerito: sf_results_analytics_query.png
 #figure(
-  image("../assets/13_sf_results_analytics_query.png", width: 80%),
+  image("../assets/sf_results_analytics_query.png", width: 80%),
   caption: "Screenshot: risultati analisi degenza media per reparto"
 )
 
@@ -98,8 +98,8 @@ Simulo l'attività di un analista che interroga il Data Mart per estrarre insigh
 
 Infine, dimostro l'efficacia delle Masking Policy sui dati PII (`DIM_PAZIENTE.CITTA` e `DATA_NASCITA`).
 
-**Test 1: Vista Analista (Dati Mascherati)**
-L'analista deve vedere `*** MASKED ***` e la data sentinel `1900-01-01`.
+*Test 1: Vista Analista (Dati Mascherati)*
+L'analista deve vedere `** MASKED **` e la data sentinel `1900-01-01`.
 
 #figure(
   ```sql
@@ -107,13 +107,7 @@ L'analista deve vedere `*** MASKED ***` e la data sentinel `1900-01-01`.
 
   SELECT TOP 5
       ID_PAZIENTE,
- 
-
-// Screenshot suggerito: 14_sf_results_masked_analyst.png
-#figure(
-  image("../assets/14_sf_results_masked_analyst.png", width: 80%),
-  caption: "Screenshot: vista mascherata per ruolo Data Analyst"
-)     CITTA,         -- Atteso: *** MASKED ***
+      CITTA,         -- Atteso: ** MASKED **
       DATA_NASCITA,  -- Atteso: 1900-01-01
       PIANO_ASSICURATIVO
   FROM HEALTHCARE_DW.ANALYTICS.DIM_PAZIENTE;
@@ -121,7 +115,13 @@ L'analista deve vedere `*** MASKED ***` e la data sentinel `1900-01-01`.
   caption: "Accesso mascherato per Data Analyst"
 )
 
-**Test 2: Vista Compliance (Dati in Chiaro)**
+// Screenshot suggerito: sf_results_masked_analyst.png
+#figure(
+  image("../assets/sf_results_masked_analyst.png", width: 80%),
+  caption: "Screenshot: vista mascherata per ruolo Data Analyst"
+)
+
+*Test 2: Vista Compliance (Dati in Chiaro)*
 Il Compliance Officer, avendo privilegi di audit, vede i dati originali.
 
 #figure(
@@ -130,16 +130,16 @@ Il Compliance Officer, avendo privilegi di audit, vede i dati originali.
 
   SELECT TOP 5
       ID_PAZIENTE,
- 
-
-// Screenshot suggerito: 15_sf_results_unmasked_compliance.png
-#figure(
-  image("../assets/15_sf_results_unmasked_compliance.png", width: 80%),
-  caption: "Screenshot: vista in chiaro per ruolo Compliance Officer"
-)     CITTA,         -- Atteso: Valore reale (es. Roma, Milano)
+      CITTA,         -- Atteso: Valore reale (es. Roma, Milano)
       DATA_NASCITA,  -- Atteso: Valore reale
       PIANO_ASSICURATIVO
   FROM HEALTHCARE_DW.ANALYTICS.DIM_PAZIENTE;
   ```,
   caption: "Accesso unmasked per Compliance Officer"
+)
+
+// Screenshot suggerito: sf_results_unmasked_compliance.png
+#figure(
+  image("../assets/sf_results_unmasked_compliance.png", width: 80%),
+  caption: "Screenshot: vista in chiaro per ruolo Compliance Officer"
 )
