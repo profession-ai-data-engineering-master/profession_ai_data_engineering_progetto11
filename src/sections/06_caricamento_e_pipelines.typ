@@ -43,7 +43,7 @@ CREATE OR REPLACE STORAGE INTEGRATION s3_int_healthcare_data
 	TYPE = EXTERNAL_STAGE
 	STORAGE_PROVIDER = S3
 	ENABLED = TRUE
-	STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::607374883457:role/snowflake_s3_readonly_role'
+	STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::123456789012:role/snowflake_s3_readonly_role'
 	STORAGE_ALLOWED_LOCATIONS = ('s3://healthcare-data-prod-eu/snowflake/raw/');
 ```,
 	caption: "Creazione Storage Integration per accesso a S3"
@@ -74,19 +74,19 @@ La trust policy del ruolo IAM utilizza questi due valori per prevenire *confused
 			"Sid": "AllowSnowflakeAssumeRole",
 			"Effect": "Allow",
 			"Principal": {
-				"AWS": "arn:aws:iam::115005006440:user/32xf1000-s"
+				"AWS": "<SNOWFLAKE_IAM_USER_ARN>"
 			},
 			"Action": "sts:AssumeRole",
 			"Condition": {
 				"StringEquals": {
-					"sts:ExternalId": "FU94465_SFCRole=4_FkK6O3wDsb9s7e5Fjx0GUL5YOvs="
+					"sts:ExternalId": "<SNOWFLAKE_EXTERNAL_ID>"
 				}
 			}
 		}
 	]
 }
 ```,
-	caption: "Trust policy del ruolo IAM (valori presi da DESC INTEGRATION)"
+	caption: "Trust policy del ruolo IAM (valori Snowflake reali sostituiti con placeholder)"
 )
 
 *D) File format Parquet e stage esterno*

@@ -60,14 +60,14 @@ Il `ROLE_COMPLIANCE_OFFICER` eredita il `ROLE_DATA_ANALYST`: questo assicura che
 
 === Assegnazione ruoli all'utente di lab
 
-Per facilitare il testing e lo switch tra i diversi profili durante la validazione, assegno esplicitamente i tre ruoli definiti all'utente principale (`FEDEVITA1997`).
+Per facilitare il testing e lo switch tra i diversi profili durante la validazione, assegno esplicitamente i tre ruoli definiti all'utente principale (`LAB_USER`).
 
 	```sql
 	USE ROLE SECURITYADMIN;
 
-	GRANT ROLE ROLE_DATA_ENGINEER TO USER FEDEVITA1997;
-	GRANT ROLE ROLE_DATA_ANALYST TO USER FEDEVITA1997;
-	GRANT ROLE ROLE_COMPLIANCE_OFFICER TO USER FEDEVITA1997;
+	GRANT ROLE ROLE_DATA_ENGINEER TO USER LAB_USER;
+	GRANT ROLE ROLE_DATA_ANALYST TO USER LAB_USER;
+	GRANT ROLE ROLE_COMPLIANCE_OFFICER TO USER LAB_USER;
 	```
 
 == 7.3 Assegnazione privilegi per layer

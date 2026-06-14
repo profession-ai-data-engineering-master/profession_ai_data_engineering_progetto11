@@ -1,94 +1,111 @@
-# Gestione dei Dati dei Pazienti con Snowflake
+# HealthData — Data Warehouse clinico su Snowflake (RBAC & GDPR)
 
-## Contesto
+Data Warehouse per i dati di un ospedale su **Snowflake**: ingestione da un Data Lake
+S3, modello a livelli **RAW → CURATED → ANALYTICS**, **star schema** per la BI, pipeline
+**ELT idempotente** orchestrata da task chain, e un impianto di sicurezza **security-by-design**
+(RBAC nativo + dynamic data masking) per la conformità **GDPR** sui dati sanitari.
 
-**HealthDataPro** è un’azienda leader nella fornitura di soluzioni di gestione e analisi dati per il settore sanitario. L’obiettivo è supportare le strutture ospedaliere nell’ottimizzare la gestione dei dati clinici, migliorando la qualità dell’assistenza e la sicurezza dei pazienti.
+> 📄 **[Leggi il report completo del progetto (PDF)](./Report_Progetto11.pdf)**
+> — architettura, modello dati, DDL, sicurezza/conformità, pipeline ELT ed esecuzioni reali su Snowflake.
 
-Un grande ospedale situato in un’area urbana ha espresso la necessità di modernizzare il proprio sistema di gestione dei dati dei pazienti. Attualmente, i dati clinici sono distribuiti tra diversi sistemi legacy, rendendo difficoltosi:
+Progetto del **Master in Data Engineering** di ProfessionAI (corso *Data Warehousing con Snowflake*).
 
-- il consolidamento delle informazioni;
-- l’analisi;
-- l’accesso in tempo reale alle informazioni critiche.
+---
 
-## Obiettivo
+## 🎯 Obiettivo
 
-Creare un sistema centralizzato basato su **Snowflake** per gestire in modo **sicuro** e **scalabile** i dati dei pazienti. L’obiettivo è consentire al personale medico e amministrativo di accedere rapidamente alle informazioni, garantendo al contempo il massimo livello di **privacy** e **conformità normativa (GDPR)**.
+Il caso di business: **HealthDataPro** deve modernizzare la gestione dei dati clinici di un
+ospedale, oggi frammentati in sistemi legacy, centralizzandoli in un sistema **sicuro**,
+**scalabile** e **conforme al GDPR**. La consegna chiedeva il solo schema dati; il progetto va
+oltre, realizzando un data warehouse **end-to-end e verificabile**: ingestione, trasformazione
+idempotente, modello dimensionale e sicurezza a livello di colonna, il tutto documentato con le
+esecuzioni reali su un account Snowflake.
 
-## Requisiti funzionali
+## 🏗️ Architettura
 
-### 1) Consolidamento dei dati
+Data Lake su S3 (Parquet, organizzato per domini EHR/ERP/IoT) ingerito in Snowflake tramite
+**Storage Integration** (accesso cross-account senza credenziali statiche), poi promosso lungo i
+layer fino allo star schema di consumo.
 
-- Integrazione di fonti eterogenee (cartelle cliniche elettroniche, sistemi ERP ospedalieri, sensori IoT).
-- Creazione di un unico repository centralizzato per i dati clinici.
+```mermaid
+flowchart LR
+    subgraph S3["AWS S3 — Data Lake (Parquet)"]
+        EHR["ehr/"]
+        ERP["erp/"]
+        IOT["iot/"]
+    end
 
-### 2) Accesso in tempo reale
+    S3 -->|Storage Integration<br/>IAM least privilege| RAW
 
-- Possibilità per medici, infermieri e staff amministrativo di accedere ai dati in tempo reale, sia da dispositivi desktop che mobili.
+    subgraph SF["Snowflake · HEALTHCARE_DW"]
+        direction LR
+        RAW["RAW<br/>mirror (COPY INTO)"] --> CUR["CURATED<br/>MERGE + quarantena"]
+        CUR --> AN["ANALYTICS<br/>star schema (DIM/FACT)"]
+        PIPE["PIPELINE<br/>task chain + stored procedure"] -.orchestra.-> RAW
+    end
 
-### 3) Analisi avanzata
+    AN --> BI["Consumo BI / query<br/>(con masking PII per ruolo)"]
+```
 
-- Implementazione di dashboard e report personalizzati per monitorare:
-	- l’efficienza dei reparti;
-	- il numero di ricoveri;
-	- le metriche di outcome clinico.
+| Layer / componente | Ruolo |
+|--------------------|-------|
+| **S3 + Storage Integration** | Data Lake Parquet; accesso cross-account via IAM role assumibile (no chiavi statiche) |
+| **RAW** | Tabelle mirror caricate con `COPY INTO` fail-fast |
+| **CURATED** | Standardizzazione, PK/FK *informational*, **quarantena** dei record orfani, popolamento via `MERGE` |
+| **ANALYTICS** | **Star schema** (`DIM_*`, `FACT_*`, bridge diagnosi) per la BI |
+| **PIPELINE** | Schema tecnico: stored procedure + **task chain** di orchestrazione |
 
-### 4) Sicurezza e conformità
+## ⚙️ Pipeline ELT (idempotente)
 
-- Implementazione di controlli granulari degli accessi basati sui ruoli (**RBAC**).
-- Cifratura dei dati sensibili e conformità alle normative **GDPR**.
+Flusso unico, eseguito solo da una **task chain** che invoca tre stored procedure
+(`EXECUTE AS OWNER`), pensate per essere **rieseguibili senza effetti collaterali**:
 
-## Deliverable tecnico
+1. **`sp_load_raw`** — `COPY INTO` dei mirror RAW da S3, `ON_ERROR = ABORT_STATEMENT` (fail-fast).
+2. **`sp_transform_curated`** — popola CURATED **solo via `MERGE`** su business key con dedup
+   deterministica (`QUALIFY ROW_NUMBER` su fingerprint), isolando i record con chiavi nulle o
+   riferimenti orfani nelle tabelle **`*_QUARANTENA`**.
+3. **`sp_publish_analytics`** — pubblica DIM/FACT dello star schema, sempre via `MERGE` idempotente.
 
-Dovrai realizzare un **modello dati su Snowflake** che rispecchi un dataset con le caratteristiche sopra descritte.
+Orchestrazione con **task** in catena (`AFTER`), schedulati alle 02:00 Europe/Rome; warehouse
+dedicati per fase (`WH_INGEST`, `WH_OPERATIONS`, `WH_ANALYTICS`).
 
-- Non è necessario popolare le tabelle con dati reali.
-- È sufficiente creare lo **schema** e il **modello delle tabelle**.
-- Facoltativo: inserimento di **dati di prova**.
+## 🔐 Sicurezza e conformità (GDPR)
 
-## Benefici del progetto
+La sicurezza è progettata **insieme** al modello dati:
 
-### 1) Centralizzazione dei dati
+- **RBAC nativo** con 3 ruoli e gerarchia: `ROLE_DATA_ENGINEER` (ingestione/trasformazione),
+  `ROLE_DATA_ANALYST` (consumo su ANALYTICS), `ROLE_COMPLIANCE_OFFICER` (audit, eredita l'analista).
+- **Least privilege per layer**: scrittura solo ai ruoli tecnici; gli analisti non vedono mai il
+  layer `RAW` ricco di PII; grant su tabelle presenti **e future**.
+- **Dynamic Data Masking** sulle PII residue di `DIM_PAZIENTE` (`CITTA`, `DATA_NASCITA`): l'analista
+  vede dati oscurati (`*** MASKED ***`, data sentinel `1900-01-01`), il compliance officer i dati in chiaro.
+- **Privacy by design**: gli identificatori diretti (nome, codice fiscale, contatti) sono
+  strutturalmente esclusi dal layer di consumo.
 
-- Eliminazione dei silos informativi.
-- Accesso più semplice a dati aggiornati e completi dei pazienti.
+## 💾 Dati
 
-### 2) Ottimizzazione dei processi
+Dataset **interamente sintetico** (nessun dato reale → nessun rischio privacy in sviluppo),
+generato con la libreria **SDV (Synthetic Data Vault)** tramite un generatore dedicato:
+[healthdata-synthetic-generator](https://github.com/fedevita/healthdata-synthetic-generator).
+Tre domini — **EHR** (pazienti, ricoveri, diagnosi), **ERP** (reparti, personale, assegnazioni),
+**IoT** (dispositivi, parametri vitali) — con integrità referenziale tra le entità.
 
-- Riduzione dei tempi di ricerca e aggiornamento delle informazioni.
-- Miglioramento della collaborazione tra i reparti ospedalieri.
+## 🛠️ Stack
 
-### 3) Miglioramento dell’assistenza
+`Snowflake` · `SQL` · `Snowflake Tasks & Stored Procedures` · `Storage Integration` ·
+`AWS S3 / IAM` · `Parquet` · `Dynamic Data Masking` · `RBAC` · `Typst`
 
-- Accesso immediato alla storia clinica del paziente, abilitando decisioni più rapide e informate.
-- Monitoraggio in tempo reale delle condizioni dei pazienti.
+## 📄 Il report
 
-### 4) Sicurezza e privacy
+Il deliverable del progetto è il **report tecnico** in [`Report_Progetto11.pdf`](./Report_Progetto11.pdf):
+documenta architettura, dizionario dati, DDL completo (RAW/CURATED/ANALYTICS), impianto RBAC e
+masking, pipeline ELT e validazione analitica, con gli screenshot delle esecuzioni su Snowflake.
 
-- Protezione avanzata dei dati sensibili.
-- Riduzione del rischio di accessi non autorizzati e di violazioni dei dati.
+Il report è scritto in [Typst](https://typst.app/) (sorgenti in [`src/`](./src)) e si rigenera con:
 
-## Valore aggiunto di Snowflake
+```powershell
+.\build.ps1
+```
 
-### 1) Scalabilità
-
-Snowflake consente di gestire grandi volumi di dati in modo efficiente, supportando la crescita futura dell’ospedale.
-
-### 2) Prestazioni elevate
-
-Elaborazione rapida e analisi in tempo reale dei dati anche in presenza di carichi di lavoro complessi.
-
-### 3) Facilità d’uso
-
-Interfaccia user-friendly per gli analisti e integrazione nativa con strumenti BI come **Tableau** o **Power BI**.
-
-### 4) Costi ottimizzati
-
-Grazie alla struttura di pagamento **pay-as-you-go**, l’ospedale paga solo per le risorse effettivamente utilizzate.
-
-## Conclusione
-
-La realizzazione del sistema basato su Snowflake permetterà all’ospedale di migliorare la gestione dei dati clinici, con un impatto positivo sia sull’efficienza operativa sia sulla qualità dell’assistenza. HealthDataPro accompagnerà l’ospedale in ogni fase del progetto, dalla migrazione dei dati alla formazione del personale, garantendo il successo dell’implementazione.
-
-## Modalità di consegna
-
-- File `.zip`
+> Nota: gli ARN e gli identificatori di account/utente nel report usano valori fittizi
+> (es. Account ID AWS `123456789012`, placeholder per i valori della Storage Integration).

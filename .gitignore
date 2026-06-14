@@ -1,6 +1,8 @@
-# Typst build output
+# Typst build output (intermedi)
 build/
-*.pdf
+
+# Il PDF finale del report (Report_Progetto11.pdf) NON è ignorato:
+# è committato di proposito perché è il deliverable consultato dal recruiter.
 
 # Python / Environment
 __pycache__/
