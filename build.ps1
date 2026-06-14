@@ -1,33 +1,17 @@
 # Script di build per compilare il progetto Typst in PDF
 
 $SourceFile = "src\main.typ"
-$BuildDir = "build"
-$Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$OutputFile = "$BuildDir\Report_Progetto11_$Timestamp.pdf"
+# Il PDF finale viene generato nella root ed è committato: è il deliverable del progetto.
+$OutputFile = "Report_Progetto11.pdf"
 
-# 1. Crea la cartella build se non esiste
-if (-not (Test-Path -Path $BuildDir)) {
-    Write-Host "Creazione cartella '$BuildDir'..." -ForegroundColor Cyan
-    New-Item -ItemType Directory -Path $BuildDir | Out-Null
-} else {
-    # Svuota la cartella build mantenendo la directory
-    Write-Host "Svuotamento cartella '$BuildDir'..." -ForegroundColor Cyan
-    try {
-        Get-ChildItem -Path $BuildDir -Force | Remove-Item -Force -Recurse
-    } catch {
-        Write-Error "Errore durante lo svuotamento della cartella '$BuildDir': $_"
-        exit 1
-    }
-}
-
-# 2. Controlla se Typst è installato
+# 1. Controlla se Typst è installato
 if (-not (Get-Command "typst" -ErrorAction SilentlyContinue)) {
     Write-Error "Errore: Typst non è installato o non è nel PATH."
     Write-Host "Puoi installarlo con: 'winget install typst'" -ForegroundColor Yellow
     exit 1
 }
 
-# 3. Compila il documento
+# 2. Compila il documento
 Write-Host "Compilazione di $SourceFile in corso..." -ForegroundColor Cyan
 try {
     # --root . imposta la root del progetto alla cartella corrente, 
